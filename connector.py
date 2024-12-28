@@ -34,7 +34,7 @@ def get_members(status = "all"):
     
     
 
-def get_contributions(status = "all"):
+def get_contributions(status = "all"): 
     query = """SELECT m.msisdn, k.first_name, k.last_name, 
                SUM(c.amount) AS total_contributions
                FROM members m
