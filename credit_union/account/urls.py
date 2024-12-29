@@ -7,4 +7,6 @@ urlpatterns = [
     path("loans", views.input_loans, name='input_loans'),
     path("contribution", views.make_contribution, name='make_contribution'),
     path("members", views.view_members, name='view_members'),
+    path("history", views.view_history, name='view_history'),
+
 ]

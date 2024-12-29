@@ -8,20 +8,28 @@
             <h1>Add New Member</h1>
             <form action="add_member.html" method="POST">
                 <div class="form-group">
-                    <label for="name">Name:</label>
-                    <input type="text" id="name" name="name" required>
+                    <label for="first_name">First Name:</label>
+                    <input type="text" id="first_name" name="first_name" required>
+                </div>
+                <div class="form-group">
+                    <label for="last_name">Last Name:</label>
+                    <input type="text" id="last_name" name="last_name" required>
                 </div>
                 <div class="form-group">
                     <label for="email">Email:</label>
-                    <input type="email" id="email" name="email" required>
+                    <input type="email" id="email" name="email">
                 </div>
                 <div class="form-group">
                     <label for="phone">Phone:</label>
                     <input type="tel" id="phone" name="phone" required>
                 </div>
                 <div class="form-group">
-                    <label for="address">Address:</label>
-                    <input type="text" id="address" name="address" required>
+                    <label for="dob">Date of Birth:</label>
+                    <input type="date" value="2000-01-01" min="1900-01-01" max="2023-12-31" id="dob" name="dob">
+                </div>
+                <div class="form-group">
+                    <label for="id_type">Id type:</label>
+                    <input type="text" id="id_type" name="id_type">
                 </div>
                 <button type="submit">Add Member</button>
             </form>

@@ -9,21 +9,25 @@
             <form action="/submit-contribution" method="POST">
                 <div class="form-group">
                     <label for="member">Select Member:</label>
-                    <select id="member" name="member_id" required>
+                    <input list="members" id="member" name="member_msisdn" placeholder="Enter a members name" required>
                         <!-- Options will be populated dynamically -->
-                        {% for member in members %}
-                            <option value="{{ member.id }}">{{ member.name }}</option>
-                        {% endfor %}
-                    </select>
+                        <datalist id="members">
+                            {% for member in members %}
+                                <option value="{{ member.name }}">{{ member.name }}</option>
+                            {% endfor %}
+                        </datalist>
+                    </input>
                 </div>
                 <div class="form-group">
                     <label for="amount">Contribution Amount:</label>
                     <input type="number" id="amount" name="amount" required>
                 </div>
                 <div class="form-group">
+                    <p>Today's date will be used if date field is left blank</p>
                     <label for="date">Contribution Date:</label>
-                    <input type="date" id="date" name="date" required>
+                    <input type="date" id="date" name="date">
                 </div>
+                
                 <button type="submit">Submit Contribution</button>
             </form>
         </section>

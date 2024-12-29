@@ -56,9 +56,10 @@ class Contribution(models.Model):
 
 class LoanRequest(models.Model):
     member_msisdn = models.ForeignKey(Member, on_delete=models.CASCADE)
-    status = models.CharField(max_length=10, choices=LoanStatus.choices)
+    status = models.CharField(max_length=10, choices=LoanStatus.choices, default=LoanStatus.PENDING)
     request_date = models.DateField(auto_now_add=True)
     amount_requested = models.DecimalField(max_digits=10, decimal_places=2)
+    loan_purpose = models.CharField(max_length=200)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 

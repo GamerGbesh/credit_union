@@ -9,21 +9,23 @@
             <table class="table">
                 <thead>
                     <tr>
-                        <th>ID</th>
                         <th>Name</th>
-                        <th>Email</th>
+                        <th>Number</th>
+                        <th>Total Contribution</th>
+                        <th>Loan debt</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for member in members %}
                     <tr>
-                        <td>{{ member.id }}</td>
-                        <td>{{ member.name }}</td>
-                        <td>{{ member.email }}</td>
+                        <td>{{ member.first_name }} {{ member.last_name }}</td>
+                        <td>{{ member.msisdn }}</td>
+                        <td>{{ member.total_contribution }}</td>
+                        <td>{{ member.loan_debt }}</td>
                         <td>
-                            <a href="{{ url_for('edit_member', member_id=member.id) }}">Edit</a>
-                            <a href="{{ url_for('delete_member', member_id=member.id) }}">Delete</a>
+                            {% comment %} <a href="{{ url_for('edit_member', member_id=member.id) }}">Edit</a>
+                            <a href="{{ url_for('delete_member', member_id=member.id) }}">Delete</a> {% endcomment %}
                         </td>
                     </tr>
                     {% endfor %}
