@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}loans{% endblock %}
+<body>
+    {% block content %}
+
+    <main>
+        <section class="input-loan">
+            <h1>Input Loan Information</h1>
+            <form action="/submit-loan" method="POST">
+                <div class="form-group">
+                    <label for="member">Select Member:</label>
+                    <select id="member" name="member_id" required>
+                        <!-- Options for members will be populated here -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="loan-amount">Loan Amount:</label>
+                    <input type="number" id="loan-amount" name="loan_amount" required>
+                </div>
+                <div class="form-group">
+                    <label for="loan-purpose">Loan Purpose:</label>
+                    <input type="text" id="loan-purpose" name="loan_purpose" required>
+                </div>
+                <button type="submit">Submit Loan</button>
+            </form>
+        </section>
+    </main>
+    {% endblock %}
+</body>
+</html>

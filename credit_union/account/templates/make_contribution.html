@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}Contribution{% endblock %}
+<body>
+    {% block content %}
+    
+    <main>
+        <section class="make-contribution">
+            <h1>Make a Contribution</h1>
+            <form action="/submit-contribution" method="POST">
+                <div class="form-group">
+                    <label for="member">Select Member:</label>
+                    <select id="member" name="member_id" required>
+                        <!-- Options will be populated dynamically -->
+                        {% for member in members %}
+                            <option value="{{ member.id }}">{{ member.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="amount">Contribution Amount:</label>
+                    <input type="number" id="amount" name="amount" required>
+                </div>
+                <div class="form-group">
+                    <label for="date">Contribution Date:</label>
+                    <input type="date" id="date" name="date" required>
+                </div>
+                <button type="submit">Submit Contribution</button>
+            </form>
+        </section>
+    </main>
+
+    {% endblock %}
+</body>
+</html>
