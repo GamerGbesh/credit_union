@@ -20,9 +20,9 @@
                     {% for member in members %}
                     <tr>
                         <td>{{ member.first_name }} {{ member.last_name }}</td>
-                        <td>{{ member.msisdn }}</td>
-                        <td>{{ member.total_contribution }}</td>
-                        <td>{{ member.loan_debt }}</td>
+                        <td>0{{ member.msisdn }}</td>
+                        <td>{% if member.total_contribution %}{{ member.total_contribution }} {% else %} 0.00 {% endif %}</td>
+                        <td>{% if member.loan_debt %}{{ member.loan_debt }}{% else %} 0.00 {% endif %}</td>
                         <td>
                             {% comment %} <a href="{{ url_for('edit_member', member_id=member.id) }}">Edit</a>
                             <a href="{{ url_for('delete_member', member_id=member.id) }}">Delete</a> {% endcomment %}
