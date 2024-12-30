@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}Pay loan{% endblock %}
+<body>
+    {% block content %}
+    
+    <main>
+        <section class="make-contribution">
+            <h1>Pay loan</h1>
+            <form action="{% url 'pay_loan' loan_id=loan.id %}" method="POST">
+                {% csrf_token %} 
+                <div class="form-group">
+                    <label for="amount">Amount:</label>
+                    <input type="number" id="amount" name="amount" step=".01" required>
+                </div>                
+                <button type="submit">Submit loan payment</button>
+            </form>
+        </section>
+    </main>
+
+    {% endblock %}
+</body>
+</html>

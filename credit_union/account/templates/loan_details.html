@@ -8,7 +8,6 @@
             <h1>{{ loan.first_name }} {{ loan.last_name }}</h1>
             <p>Amount Requested: {{ loan.amount_requested }}</p>
             <p>Date: {{ loan.date | date:"Y-m-d" }}</p>
-            <p>Status: {{ loan.loan_status }}</p>
             <p>Description: {{ loan.loan_description }}</p>
         </section>
         {% if loan.loan_status == 'PENDING' %}
@@ -24,7 +23,11 @@
                 <p>Interest: {{ approved.interest}}</p>
                 <p>End Of Loan Date: {{ approved.end_of_loan_date }}</p>
                 <p>Amount left: {{ approved.amount_left }}</p>
-                <p>Monthly Deduction: {{ approved.monthly_deduction }}</p>
+                <p>Status: {{ approved.status }}</p>
+                <p>Monthly Payment: {{ approved.monthly_deduction }}</p>
+                
+                <a href="{% url 'pay_loan' loan_id=loan.id %}"><button type="submit" class="btn btn-primary" name="button">Pay Loan</button></a>
+                    
             </section>
             {% else %}
                 <p class="btn btn-danger">Loan has been rejected</p>

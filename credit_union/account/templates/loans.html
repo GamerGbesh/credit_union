@@ -5,7 +5,7 @@
 
     <main>
         <section class="view-members">
-            <h1>Current Members</h1>
+            <h1>Loan Requests</h1>
             <table class="table">
                 <thead>
                     <tr>
@@ -13,7 +13,7 @@
                         <th>Amount Requested</th>
                         <th>Date</th>
                         <th>Status</th>
-                        <th>Actions</th>
+                        
                     </tr>
                 </thead>
                 <tbody>
@@ -27,6 +27,13 @@
                     </tr>
                     {% endfor %}
                 </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="5">
+                            <a href="{% url 'input_loans' %}">Add Loan Request</a>
+                        </td>
+                    </tr>
+                </tfoot>
             </table>
         </section>
     </main>

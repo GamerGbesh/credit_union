@@ -66,6 +66,7 @@ class LoanRequest(models.Model):
 class ApprovedLoan(models.Model):
     id = models.AutoField(primary_key=True)
     member_msisdn = models.ForeignKey(Member, on_delete=models.CASCADE)
+    loan_request_id = models.ForeignKey(LoanRequest, on_delete=models.CASCADE)
     amount_of_loan = models.DecimalField(max_digits=10, decimal_places=2)
     interest = models.DecimalField(max_digits=10, decimal_places=2)
     end_of_loan_date = models.DateField()
@@ -75,12 +76,12 @@ class ApprovedLoan(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
-class MemberBalance(models.Model):
-    id = models.AutoField(primary_key=True)
-    member_msisdn = models.ForeignKey(Member, on_delete=models.CASCADE)
-    balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    created = models.DateTimeField(auto_now_add=True)
-    updated = models.DateTimeField(auto_now=True)
+# class MemberBalance(models.Model):
+#     id = models.AutoField(primary_key=True)
+#     member_msisdn = models.ForeignKey(Member, on_delete=models.CASCADE)
+#     balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+#     created = models.DateTimeField(auto_now_add=True)
+#     updated = models.DateTimeField(auto_now=True)
 
 class CreditUnionBalance(models.Model):
     id = models.AutoField(primary_key=True)

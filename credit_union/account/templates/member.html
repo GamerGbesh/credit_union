@@ -8,7 +8,6 @@
             <h1>{{ member.first_name }} {{ member.last_name }}</h1>
             <p>Member Phone Number: 0{{ member.msisdn }}</p>
             <p>Total Contribution: {% if member.total_contribution %}{{ member.total_contribution }} {% else %} 0.00 {% endif %}</p>
-            <p>Balance currently: {% if member.amount %}{{ member.amount }} {% else %} 0.00 {% endif %}</p>
             <p>Loan debt: {% if member.loan_debt %}{{ member.loan_debt }}{% else %} 0.00 {% endif %}</p>
             <p>Email: {% if member.email %}{{ member.email }}{% else %} N/A {% endif %}</p>
             <p>Date of Birth: {{ member.dob }}</p>

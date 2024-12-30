@@ -13,7 +13,7 @@
                         <th>Number</th>
                         <th>Total Contribution</th>
                         <th>Loan debt</th>
-                        <th>Actions</th>
+                        
                     </tr>
                 </thead>
                 <tbody>
@@ -23,10 +23,32 @@
                         <td>0{{ member.msisdn }}</td>
                         <td>{% if member.total_contribution %}{{ member.total_contribution }} {% else %} 0.00 {% endif %}</td>
                         <td>{% if member.loan_debt %}{{ member.loan_debt }}{% else %} 0.00 {% endif %}</td>
-                        <td><a href={% url 'members' msisdn=member.msisdn %}>View</a></td>
+                        <td><a href={% url 'members' msisdn=member.msisdn %}>More</a></td>
                     </tr>
                     {% endfor %}
                 </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="5">
+                            <a href="{% url 'add_member' %}">Add member</a>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+            <table class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>Credit Union Balance</th>
+                        <th>Overall Contribution</th>
+                        <th>Overall debt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>{{ credit_union_balance }}</td>
+                        <td>{{ total_contribution }}</td>
+                        <td>{{ total_loan_debt }}</td>
+
             </table>
         </section>
     </main>
