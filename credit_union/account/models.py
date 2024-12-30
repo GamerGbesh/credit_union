@@ -70,7 +70,7 @@ class ApprovedLoan(models.Model):
     interest = models.DecimalField(max_digits=10, decimal_places=2)
     end_of_loan_date = models.DateField()
     monthly_deduction = models.DecimalField(max_digits=10, decimal_places=2)
-    status = models.CharField(max_length=10, choices=StatusEnum.choices)
+    status = models.CharField(max_length=10, choices=StatusEnum.choices, default=StatusEnum.ACTIVE)
     amount_left = models.DecimalField(max_digits=10, decimal_places=2)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
@@ -78,13 +78,13 @@ class ApprovedLoan(models.Model):
 class MemberBalance(models.Model):
     id = models.AutoField(primary_key=True)
     member_msisdn = models.ForeignKey(Member, on_delete=models.CASCADE)
-    balance = models.DecimalField(max_digits=10, decimal_places=2)
+    balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
 class CreditUnionBalance(models.Model):
     id = models.AutoField(primary_key=True)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 

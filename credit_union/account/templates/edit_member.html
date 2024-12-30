@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block title %}Add member{% endblock %}
+<body>
+    {% block content %}
+    
+    <main>
+        <section class="add-member">
+            <h1>Make changes</h1>
+            <form action="{% url 'edit_member' member.msisdn %}" method="POST">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="first_name">First Name:</label>
+                    <input type="text" id="first_name" name="first_name" value={{ member.first_name}} required>
+                </div>
+                <div class="form-group">
+                    <label for="last_name">Last Name:</label>
+                    <input type="text" id="last_name" name="last_name" value={{ member.last_name }} required>    
+                </div>
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" value={{ member.email }}>
+                </div>
+                <div class="form-group">
+                    <label for="phone">Phone:</label>
+                    <input type="tel" id="phone" name="phone" value="0{{ member.msisdn}}"required>
+                </div>
+                <div class="form-group">
+                    <label for="id_type">Id type:</label>
+                    <input type="text" id="id_type" name="id_type" value={{ member.id_type }}>
+                </div>
+                <button type="submit">Make changes</button>
+            </form>
+        </section>
+    </main>
+
+    {% endblock %}
+</body>
+</html>

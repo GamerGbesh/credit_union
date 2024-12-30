@@ -1,29 +1,29 @@
 {% extends 'base.html' %}
-{% block title %}Transaction History{% endblock %}
+{% block title %}View members{% endblock %}
 <body>
     {% block content %}
 
     <main>
         <section class="view-members">
-            <h1>History</h1>
+            <h1>Current Members</h1>
             <table class="table">
                 <thead>
                     <tr>
                         <th>Name</th>
-                        <th>Amount</th>
-                        <th>Transaction Type</th>
+                        <th>Amount Requested</th>
                         <th>Date</th>
-                        <th>Description</th>
+                        <th>Status</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for member in members %}
                     <tr>
                         <td>{{ member.first_name }} {{ member.last_name }}</td>
-                        <td>{{ member.amount }}</td>
-                        <td>{{ member.transaction_type }}</td>
+                        <td>{{ member.amount_requested }}</td>
                         <td>{{ member.date }}</td>
-                        <td>{{ member.description }}</td>
+                        <td>{{ member.loan_status }}</td>
+                        <td><a href={% url 'loan_details' loan_id=member.loan_id %}>More details</a></td>
                     </tr>
                     {% endfor %}
                 </tbody>

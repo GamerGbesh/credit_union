@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}{{ member.first_name }} {{ member.last_name }}{% endblock %}
+<body>
+    {% block content %}
+
+    <main class="container mt-5">
+        <section class="member">
+            <h1>{{ member.first_name }} {{ member.last_name }}</h1>
+            <p>Member Phone Number: 0{{ member.msisdn }}</p>
+            <p>Total Contribution: {% if member.total_contribution %}{{ member.total_contribution }} {% else %} 0.00 {% endif %}</p>
+            <p>Balance currently: {% if member.amount %}{{ member.amount }} {% else %} 0.00 {% endif %}</p>
+            <p>Loan debt: {% if member.loan_debt %}{{ member.loan_debt }}{% else %} 0.00 {% endif %}</p>
+            <p>Email: {% if member.email %}{{ member.email }}{% else %} N/A {% endif %}</p>
+            <p>Date of Birth: {{ member.dob }}</p>
+            <p>Id type: {% if member.id_type %}{{ member.id_type }} {% else %} N/A {% endif %}</p>
+        </section>
+        <div class="action">
+            <a href="{% url 'edit_member' member.msisdn %}">Edit</a>
+
+        </div>
+    </main>
+
+    {% endblock %}
+</body>
+</html>

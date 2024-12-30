@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}{{ member.first_name }} {{ member.last_name }}{% endblock %}
+<body>
+    {% block content %}
+
+    <main class="container mt-5">
+        <section class="member">
+            <h1>{{ loan.first_name }} {{ loan.last_name }}</h1>
+            <p>Amount Requested: {{ loan.amount_requested }}</p>
+            <p>Date: {{ loan.date | date:"Y-m-d" }}</p>
+            <p>Status: {{ loan.loan_status }}</p>
+            <p>Description: {{ loan.loan_description }}</p>
+        </section>
+        {% if loan.loan_status == 'PENDING' %}
+        <form action="{% url 'loan_details' loan_id=loan.id %}" method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary" value="approve" name="button">Approve Loan</button>
+            <button type="submit" class="btn btn-danger" value="reject" name="button">Reject Loan</button>
+        </form>
+        {% else %}
+            {% if loan.loan_status == 'APPROVED' %}
+            <section class="member">
+                <p>Amount of Loan: {{ approved.amount_of_loan }}</p>
+                <p>Interest: {{ approved.interest}}</p>
+                <p>End Of Loan Date: {{ approved.end_of_loan_date }}</p>
+                <p>Amount left: {{ approved.amount_left }}</p>
+                <p>Monthly Deduction: {{ approved.monthly_deduction }}</p>
+            </section>
+            {% else %}
+                <p class="btn btn-danger">Loan has been rejected</p>
+            {% endif %}
+        {% endif %}
+    </main>
+
+    {% endblock %}
+</body>
+</html>
