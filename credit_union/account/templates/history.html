@@ -6,6 +6,27 @@
     <main>
         <section class="view-members">
             <h1>History</h1>
+            <form action="history" class="sort_head">
+                <label for="sort">Sort by</label>
+                <select name="sort" class="sort">
+                  <option value="first_name" {% if sort == 'first_name' %}selected{% endif %}>Name</option>
+                  <option value="transaction_created" {% if sort == 'transaction_created' %}selected{% endif %}>Date</option>
+                  <option value="amount"{% if sort == 'amount' %}selected{% endif %}>Amount</option>
+                </select>
+                <select name="order" class="sort">
+                  <option value="" {% if order == '' %}selected{% endif %}>Ascending</option>
+                  <option value="-" {% if order == '-' %}selected{% endif %}>Descending</option>
+                </select>
+                <label for="filter">Filter by</label>
+                <select name="filter" class="filter">
+                  <option value="all" {% if filter == 'all' %}selected{% endif %}>All</option>
+                  <option value="DEPOSIT" {% if filter == 'DEPOSIT' %}selected{% endif %}>Deposit</option>
+                  <option value="SAVINGS WITHDRAWAL"{% if filter == 'SAVINGS WITHDRAWAL' %}selected{% endif %}>Savings Withdrawal</option>
+                  <option value="LOAN PAYMENT"{% if filter == 'LOAN PAYMENT' %}selected{% endif %}>Loan Payment</option>
+                  <option value="LOAN WITHDRAWAL"{% if filter == 'LOAN WITHDRAWAL' %}selected{% endif %}>Loan Withdrawal</option>
+                </select>
+                <button type="submit" class="apply">Apply</button> 
+            </form>
             <table class="table">
                 <thead>
                     <tr>
@@ -17,18 +38,39 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for member in members %}
+                    {% for member in page_obj %}
                     <tr>
                         <td>{{ member.first_name }} {{ member.last_name }}</td>
                         <td>{{ member.amount }}</td>
                         <td>{{ member.transaction_type }}</td>
-                        <td>{{ member.date }}</td>
+                        <td>{{ member.transaction_created }}</td>
                         <td>{{ member.description }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </section>
+        <div class="pagination">{% if page_obj.paginator.num_pages != 1%}
+            <span id="page_num">
+                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+            </span>
+            <div class="page">
+                {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}">Back</a>
+                {% endif %}
+        
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                        <strong id="highlight">{{ num }}</strong>
+                    {% else %}
+                        <a href="?page={{ num }}">{{ num }}</a>
+                    {% endif %}
+                {% endfor %}
+        
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}">Next</a>
+                {% endif %}
+            {% endif %}
     </main>
 
     {% endblock %}

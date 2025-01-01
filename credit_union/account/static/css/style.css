@@ -46,3 +46,37 @@ footer {
     bottom: 0;
     width: 100%;
 }
+
+.pagination {
+    display:flexbox;
+    text-align: center;
+    margin-top: 20px;
+    position: relative;
+    left: 20%;
+    margin-left: 20px;
+    padding: 5px;
+}
+
+.pagination .page {
+    background-color: rgb(206, 206, 206);
+    padding: 1%;
+   text-align: left;
+}
+
+.pagination .page #highlight {
+    background-color: rgb(98, 98, 245);
+    border-radius: 20px;
+    padding: 5px 10px;
+}
+
+
+
+.pagination a {
+    margin: 0 5px;
+    text-decoration: none;
+    color: #007bff;
+}
+
+.pagination #page_num {
+    padding: 10px;
+}

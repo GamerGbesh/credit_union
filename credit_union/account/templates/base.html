@@ -27,12 +27,16 @@
                         <a class="nav-link" href="/loans">Loans</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/history">Transaction History</a>
+                        <a class="nav-link" href="/loan_request">Loan Requests</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/history">History</a>
                     </li>
                 </ul>
             </div>
         </nav>
     </header>
+    {% include 'messaging.html' %}
 
     <main role="main" class="container">
         {% block content %}{% endblock %}

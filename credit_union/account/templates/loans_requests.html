@@ -1,17 +1,17 @@
 {% extends 'base.html' %}
-{% block title %}Loans{% endblock %}
+{% block title %}Loan Requests{% endblock %}
 <body>
     {% block content %}
 
     <main>
         <section class="view-members">
-            <h1>Loans</h1>
-            <form action="loans" class="sort_head">
+            <h1>Loan Requests</h1>
+            <form action="loan_request" class="sort_head">
                 <label for="sort">Sort by</label>
                 <select name="sort" class="sort">
                   <option value="first_name" {% if sort == 'first_name' %}selected{% endif %}>Name</option>
-                  <option value="updated" {% if sort == 'updated' %}selected{% endif %}>Date updated</option>
-                  <option value="amount_of_loan"{% if sort == 'amount_of_loan' %}selected{% endif %}>Amount requested</option>
+                  <option value="loan_created" {% if sort == 'loan_created' %}selected{% endif %}>Date created</option>
+                  <option value="amount_requested"{% if sort == 'amount_requested' %}selected{% endif %}>Amount requested</option>
                 </select>
                 <select name="order" class="sort">
                   <option value="" {% if order == '' %}selected{% endif %}>Ascending</option>
@@ -20,9 +20,9 @@
                 <label for="filter">Filter by</label>
                 <select name="filter" class="filter">
                   <option value="all" {% if filter == 'all' %}selected{% endif %}>All</option>
-                  <option value="ACTIVE" {% if filter == 'ACTIVE' %}selected{% endif %}>Active</option>
-                  <option value="PAID"{% if filter == 'PAID' %}selected{% endif %}>Paid</option>
-                  <option value="OVERDUE"{% if filter == 'OVERDUE' %}selected{% endif %}>Overdue</option>
+                  <option value="APPROVED" {% if filter == 'APPROVED' %}selected{% endif %}>Approved</option>
+                  <option value="REJECTED"{% if filter == 'REJECTED' %}selected{% endif %}>Rejected</option>
+                  <option value="PENDING"{% if filter == 'PENDING' %}selected{% endif %}>Pending</option>
                 </select>
                 <button type="submit" class="apply">Apply</button> 
             </form>
@@ -31,26 +31,28 @@
                     <tr>
                         <th>Name</th>
                         <th>Amount Requested</th>
-                        <th>Interest</th>
-                        <th>Total amount to pay</th>
-                        <th>Amount Left to pay</th>
+                        <th>Date</th>
                         <th>Status</th>
-                        
                     </tr>
                 </thead>
                 <tbody>
                     {% for member in page_obj %}
                     <tr>
                         <td>{{ member.first_name }} {{ member.last_name }}</td>
-                        <td align="center">{{ member.amount_of_loan }}</td>
-                        <td align="center">{{ member.interest }}</td>
-                        <td align="center">{{ member.total_amount }}</td>
-                        <td align="center">{{ member.amount_left }}</td>
-                        <td>{{ member.status }}</td>
-                        <td align="center"><a href={% url 'loan_details' loan_id=member.loan_id %}>More details</a></td>
+                        <td >{{ member.amount_requested }}</td>
+                        <td>{{ member.date }}</td>
+                        <td>{{ member.loan_status }}</td>
+                        <td><a href={% url 'loan_details' loan_id=member.loan_id %}>More details</a></td>
                     </tr>
                     {% endfor %}
                 </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="5">
+                            <a href="{% url 'input_loans' %}">Add Loan Request</a>
+                        </td>
+                    </tr>
+                </tfoot>
             </table>
             <div class="pagination">{% if page_obj.paginator.num_pages != 1%}
                 <span id="page_num">

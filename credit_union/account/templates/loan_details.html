@@ -7,30 +7,56 @@
         <section class="member">
             <h1>{{ loan.first_name }} {{ loan.last_name }}</h1>
             <p>Amount Requested: {{ loan.amount_requested }}</p>
-            <p>Date: {{ loan.date | date:"Y-m-d" }}</p>
+            <p>Date Requested: {{ loan.created }}</p>
             <p>Description: {{ loan.loan_description }}</p>
         </section>
         {% if loan.loan_status == 'PENDING' %}
         <form action="{% url 'loan_details' loan_id=loan.id %}" method="post">
             {% csrf_token %}
+            <div class="form-group">
+                <label for="interest">Interest rate(%): </label>
+                <input type="number" id="amount" name="interest" step=".01" value=18 required>
+            </div>
+            <div class="form-group">
+                <label for="date">Due date of loan:</label></br>
+                <input type="date" name="due_date" min="1900-01-01">
+                <p>If left blank, {{ due_date }} will be used</p>
+            </div>
+            <div class="form-group">
+                <label for="date">Date of loan request acceptance:</label></br>
+                <input type="date" name="date" min="1900-01-01">
+                <p>If left blank, today's date will be used</p>
+            </div>
+            <div class="form-group">
+                <label for="time">Time of loan request acceptance:</label></br>
+                <input type="time" name="time">
+                <p>If left blank, the current time will be used</p>
+            </div>
             <button type="submit" class="btn btn-primary" value="approve" name="button">Approve Loan</button>
             <button type="submit" class="btn btn-danger" value="reject" name="button">Reject Loan</button>
         </form>
         {% else %}
             {% if loan.loan_status == 'APPROVED' %}
             <section class="member">
+                <p>Date Approved: {{ approved.created }}</p>
                 <p>Amount of Loan: {{ approved.amount_of_loan }}</p>
                 <p>Interest: {{ approved.interest}}</p>
                 <p>End Of Loan Date: {{ approved.end_of_loan_date }}</p>
                 <p>Amount left: {{ approved.amount_left }}</p>
                 <p>Status: {{ approved.status }}</p>
                 <p>Monthly Payment: {{ approved.monthly_deduction }}</p>
-                
-                <a href="{% url 'pay_loan' loan_id=loan.id %}"><button type="submit" class="btn btn-primary" name="button">Pay Loan</button></a>
-                    
+                {% if approved.status == 'ACTIVE' %}
+                    <a href="{% url 'pay_loan' loan_id=loan.id %}"><button type="submit" class="btn btn-primary" name="button">Pay Loan</button></a>
+                {% elif approved.status == 'PAID' %}
+                <a href="{% url 'loan_request' %}"><p class="btn btn-success">Loan has been paid</p></a>
+                {% elif approved.status == 'OVERDUE' %}
+                <p>This loan is overdue</p>
+                <a href="{% url 'pay_loan' loan_id=loan.id %}"><button type="submit" class="btn btn-danger" name="button">Pay Loan</button></a>
+                {% endif %} 
             </section>
             {% else %}
-                <p class="btn btn-danger">Loan has been rejected</p>
+                <p>Date Rejected: {{ loan.updated }}</p>
+                <a href="{% url 'loan_request' %}"><p class="btn btn-danger">Loan has been rejected</p></a>
             {% endif %}
         {% endif %}
     </main>

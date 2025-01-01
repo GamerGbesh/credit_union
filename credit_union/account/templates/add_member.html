@@ -9,33 +9,26 @@
             <form action="add" method="POST">
                 {% csrf_token %}
                 <div class="form-group">
-                    <label for="first_name">First Name:</label>
+                    <label for="first_name">First Name*</label></br>
                     <input type="text" id="first_name" name="first_name" required>
                 </div>
                 <div class="form-group">
-                    <label for="last_name">Last Name:</label>
+                    <label for="last_name">Last Name*</label></br>
                     <input type="text" id="last_name" name="last_name" required>
                 </div>
                 <div class="form-group">
-                    <label for="email">Email:</label>
+                    <label for="email">Email</label></br>
                     <input type="email" id="email" name="email">
                 </div>
                 <div class="form-group">
-                    <label for="phone">Phone:</label>
-                    <input type="tel" id="phone" name="phone" required>
+                    <label for="phone">Phone*</label></br>
+                    <input type="tel" id="phone" name="phone" placeholder="eg. 0203334442"required>
                 </div>
                 <div class="form-group">
-                    <label for="dob">Date of Birth:</label>
-                    <input type="date" value="2000-01-01" min="1900-01-01" max="2023-12-31" id="dob" name="dob">
+                    <label for="dob">Date of Birth</label></br>
+                    <input type="date" value="2020-01-01" min="1900-01-01" max="2023-12-31" id="dob" name="dob">
                 </div>
-                <div class="form-group">
-                    <label for="id_type">Id type:</label>
-                    <input type="text" id="id_type" name="id_type">
-                </div>
-                <div class="form-group">
-                    <label for="amount">Balance currently:</label>
-                    <input type="number" id="amount" name="amount" step=".01">
-                </div>
+            
                 <button type="submit">Add Member</button>
             </form>
         </section>

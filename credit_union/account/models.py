@@ -3,8 +3,7 @@ from django.db import models
 # Enum for member_status
 class MemberStatus(models.TextChoices):
     ACTIVE = 'ACTIVE', 'Active'
-    INACTIVE = 'INACTIVE', 'Inactive'
-    SUSPENDED = 'SUSPENDED', 'Suspended'
+    INACTIVE = 'INACTIVE', 'Inactive' #
 
 # Enum for loan_status
 class LoanStatus(models.TextChoices):
@@ -15,19 +14,18 @@ class LoanStatus(models.TextChoices):
 # Enum for status_enum
 class StatusEnum(models.TextChoices):
     ACTIVE = 'ACTIVE', 'Active'
-    PAID = 'PAID', 'Paid'
-    OVERDUE = 'OVERDUE', 'Overdue'
+    PAID = 'PAID', 'Paid' #
+    OVERDUE = 'OVERDUE', 'Overdue' #
 
 # Enum for transaction_enum
 class TransactionEnum(models.TextChoices):
     DEPOSIT = 'DEPOSIT', 'Deposit'
-    SAVINGS_WITHDRAWAL = 'SAVINGS_WITHDRAWAL', 'Savings Withdrawal'
-    LOAN_REPAYMENT = 'LOAN_REPAYMENT', 'Loan Repayment'
-    LOAN_WITHDRAWAL = 'LOAN_WITHDRAWAL', 'Loan Withdrawal'
+    SAVINGS_WITHDRAWAL = 'SAVINGS WITHDRAWAL', 'Savings Withdrawal'
+    LOAN_PAYMENT = 'LOAN PAYMENT', 'Loan payment'
+    LOAN_WITHDRAWAL = 'LOAN WITHDRAWAL', 'Loan Withdrawal'
 
 class Member(models.Model):
     msisdn = models.IntegerField(primary_key=True)
-    deleted = models.BooleanField(default=False)
     status = models.CharField(
         max_length=10,
         choices=MemberStatus.choices,
@@ -42,7 +40,6 @@ class KYCDetails(models.Model):
     last_name = models.CharField(max_length=50)
     email = models.EmailField(unique=True, null=True, blank=True)
     dob = models.DateField(null=True, blank=True)
-    id_type = models.CharField(max_length=20, null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -51,18 +48,21 @@ class Contribution(models.Model):
     member_msisdn = models.ForeignKey(Member, on_delete=models.CASCADE)
     transaction_date = models.DateTimeField(auto_now_add=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
+    interest = models.DecimalField(max_digits=10, decimal_places=2)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
 class LoanRequest(models.Model):
     member_msisdn = models.ForeignKey(Member, on_delete=models.CASCADE)
     status = models.CharField(max_length=10, choices=LoanStatus.choices, default=LoanStatus.PENDING)
-    request_date = models.DateField(auto_now_add=True)
+    request_date = models.DateField()
+    request_time = models.TimeField()
     amount_requested = models.DecimalField(max_digits=10, decimal_places=2)
     loan_purpose = models.CharField(max_length=200)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
+# Put the request_time and date on approved_loan
 class ApprovedLoan(models.Model):
     id = models.AutoField(primary_key=True)
     member_msisdn = models.ForeignKey(Member, on_delete=models.CASCADE)
@@ -94,6 +94,8 @@ class Transaction(models.Model):
     member_msisdn = models.ForeignKey(Member, on_delete=models.CASCADE)
     transaction_type = models.CharField(max_length=20, choices=TransactionEnum.choices)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    date = models.DateField(auto_now_add=True)
-    description = models.TextField(null=True, blank=True)
+    date = models.DateField()
+    time = models.TimeField()
     created = models.DateTimeField(auto_now_add=True)
+    description = models.TextField(null=True, blank=True)
+    

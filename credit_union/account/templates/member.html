@@ -13,10 +13,16 @@
             <p>Date of Birth: {{ member.dob }}</p>
             <p>Id type: {% if member.id_type %}{{ member.id_type }} {% else %} N/A {% endif %}</p>
         </section>
+        {% if member.status == 'ACTIVE' %}
         <div class="action">
             <a href="{% url 'edit_member' member.msisdn %}">Edit</a>
-
         </div>
+        
+        <form action="{% url 'withdraw' member.msisdn %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary" value="withdraw" name="button">Withdraw Money</button>
+        </form>
+        {% endif %}
     </main>
 
     {% endblock %}
