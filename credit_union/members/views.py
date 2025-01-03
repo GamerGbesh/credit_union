@@ -39,19 +39,12 @@ def signup(request):
             user = authenticate(username=username.lower(), password=password)
             messages.success(request, "Account created successfully")
             login(request, user)
-            return redirect("create_union")
+            user = request.user
+            CreditUnionBalance.objects.create(user_id=user)
+            return redirect("home")
+            
     else:
         form = CustomUserCreationForm()
     return render(request, "authentication/signup.html", {"form": form})
 
 
-def create_union(request):
-    if request.method == "POST":
-        union_name = request.POST.get("name")
-        if len(union_name) > 50:
-            messages.error(request, "Name is too long")
-            return redirect("create_union")
-        user = request.user
-        CreditUnionBalance.objects.create(name=union_name, user_id=user)
-        return redirect("home")
-    return render(request, "authentication/credit_union.html")
