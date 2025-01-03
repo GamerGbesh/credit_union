@@ -1,10 +1,14 @@
 asgiref==3.8.1
+dj-database-url==2.3.0
 Django==5.1.4
 django-jinja==2.11.0
+gunicorn==23.0.0
 Jinja2==3.1.5
 MarkupSafe==3.0.2
+packaging==24.2
 psycopg2 @ file:///C:/b/abs_3ei4rka0ip/croot/psycopg2_1731693723700/work
 setuptools==75.1.0
 sqlparse==0.5.3
+typing_extensions==4.12.2
 tzdata==2024.2
 wheel==0.44.0
