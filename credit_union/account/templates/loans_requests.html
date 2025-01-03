@@ -6,7 +6,7 @@
     <main>
         <section class="view-members">
             <h1>Loan Requests</h1>
-            <form action="loan_request" class="sort_head">
+            <form action="{% url 'loan_request' %}" class="sort_head">
                 <label for="sort">Sort by</label>
                 <select name="sort" class="sort">
                   <option value="first_name" {% if sort == 'first_name' %}selected{% endif %}>Name</option>

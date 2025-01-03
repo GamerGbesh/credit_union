@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Signup{% endblock %}
+<body>
+    {% block content %}
+    {% if form.errors %}
+    <div class="alert alert-info alert-dismissable" role="alert">
+        <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+        There was an error with your form...
+    </div>
+    
+    {% endif %}
+    <main>
+        <section >
+            <h1>Sign up</h1>
+        </br>
+            <form action="{% url 'signup' %}" method="POST">
+                {% csrf_token %}
+                {{ form.as_p }}
+                    
+                <button type="submit" class="btn btn-primary">Signup</button>
+            </form>
+        </section>
+    </main>
+
+    {% endblock %}
+</body>
+</html>

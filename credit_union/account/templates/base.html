@@ -11,27 +11,38 @@
 <body>
     <header>
         <nav class="navbar navbar-expand-lg navbar-light bg-light">
-            <a class="navbar-brand" href="/">Credit Union System</a>
+            <a class="navbar-brand" href="{% url 'home' %}">Credit Union System</a>
             <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav">
+                    {% if user.is_authenticated %}
+                    {% if union %}
                     <li class="nav-item">
-                        <a class="nav-link" href="/members">Members</a>
+                        <a class="nav-link" href="{% url 'view_members' %}">Members</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/contribution">Make Contribution</a>
+                        <a class="nav-link" href="{% url 'make_contribution' %}">Make Contribution</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/loans">Loans</a>
+                        <a class="nav-link" href="{% url 'view_loans' %}">Loans</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/loan_request">Loan Requests</a>
+                        <a class="nav-link" href="{% url 'loan_request'%}">Loan Requests</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/history">History</a>
+                        <a class="nav-link" href="{% url 'view_history' %}">History</a>
                     </li>
+                    {% endif %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'logout' %}">Logout</a>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'login' %}">Login</a>
+                    </li>
+                    {% endif %}
                 </ul>
             </div>
         </nav>
@@ -42,11 +53,6 @@
         {% block content %}{% endblock %}
     </main>
 
-    <footer class="footer">
-        <div class="container">
-            <p class="text-muted">&copy; {{ current_year }} Credit Union System. All rights reserved.</p>
-        </div>
-    </footer>
 
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>

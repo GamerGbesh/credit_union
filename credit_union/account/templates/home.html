@@ -13,7 +13,33 @@
             </p>
         </section>
     </main>
+    {% if user.is_authenticated %}
+    {% if not union %}
+    <p align="center">
+        To create a Credit Union System, please click the button below.
+    </p>    
+    <p align="center"><a href="{% url 'create_union' %}" class="btn btn-primary">Create Credit Union</a></p>
+    {% else %}
+    <h3 align="center">
+        You are currently managing the <strong>{{ union.name }}</strong> Credit Union System.
+    </h3>
+    <table class="table table-striped table-bordered">
+        <thead>
+            <tr>
+                <th>Credit Union Balance</th>
+                <th>Overall Contribution</th>
+                <th>Overall debt</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>{{ union.amount }}</td>
+                <td>{{ total_contribution }}</td>
+                <td>{{ total_loan_debt }}</td>
 
+    </table>
+    {% endif %}
+    {% endif %}
     {% endblock %}
 </body>
 </html>

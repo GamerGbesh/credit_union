@@ -4,7 +4,7 @@
     {% block content %}
     
     <main>
-        <section class="make-contribution">
+        <section class="add-member">
             <h1>Pay loan</h1>
             <form action="{% url 'pay_loan' loan_id=loan.id %}" method="POST">
                 {% csrf_token %} 
@@ -22,7 +22,7 @@
                     <input type="time" name="time">
                     <p>If left blank, the current time will be used</p>
                 </div>                
-                <button type="submit">Submit loan payment</button>
+                <button type="submit" class="btn btn-primary">Submit loan payment</button>
             </form>
         </section>
     </main>

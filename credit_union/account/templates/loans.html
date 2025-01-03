@@ -6,7 +6,7 @@
     <main>
         <section class="view-members">
             <h1>Loans</h1>
-            <form action="loans" class="sort_head">
+            <form action="{% url 'view_loans' %}" class="sort_head">
                 <label for="sort">Sort by</label>
                 <select name="sort" class="sort">
                   <option value="first_name" {% if sort == 'first_name' %}selected{% endif %}>Name</option>
@@ -24,7 +24,7 @@
                   <option value="PAID"{% if filter == 'PAID' %}selected{% endif %}>Paid</option>
                   <option value="OVERDUE"{% if filter == 'OVERDUE' %}selected{% endif %}>Overdue</option>
                 </select>
-                <button type="submit" class="apply">Apply</button> 
+                <button type="submit" class="apply" class="btn btn-primary">Apply</button> 
             </form>
             <table class="table">
                 <thead>

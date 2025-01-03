@@ -4,7 +4,7 @@
     {% block content %}
     
     <main>
-        <section class="make-contribution">
+        <section class="add-member">
             <h1>Make a Contribution</h1>
             <form action="contribution" method="POST">
                 {% csrf_token %} 
@@ -38,7 +38,7 @@
                     <p>If left blank, the current time will be used</p>
                 </div>
                 
-                <button type="submit">Submit Contribution</button>
+                <button type="submit" class="btn btn-primary">Submit Contribution</button>
             </form>
         </section>
     </main>

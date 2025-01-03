@@ -5,12 +5,31 @@ from datetime import datetime
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib import messages
 from django.db.models.functions import Coalesce
+from django.contrib.auth.decorators import login_required
 
 # Create your views here.
 
 # Members
 def home(request):
-    return render(request, "home.html", {"current_year": 2024})
+    if request.user.is_authenticated:
+        union = CreditUnionBalance.objects.filter(user_id=request.user).first()
+        if union:
+            total_contributions = Contribution.objects.filter(user_id=request.user).aggregate(Sum("amount"))["amount__sum"]
+            total_loans = ApprovedLoan.objects.filter(user_id=request.user).aggregate(Sum("amount_left"))["amount_left__sum"]
+            if not total_contributions:
+                total_contributions = 0
+            if not total_loans:
+                total_loans = 0
+            return render(request, "home.html", {"current_year": 2024, "union": union, 
+                                                "total_contribution": total_contributions, 
+                                                "total_loan_debt": total_loans})
+        else:
+            return render(request, "home.html", {"current_year": 2024})
+    else:
+        return render(request, "home.html", {"current_year": 2024})
+
+
+@login_required
 def add_member(request):
     # Add a field to take care of the date joined by the individual if they are a new member
     # If edited, then show the date edited
@@ -60,7 +79,7 @@ def add_member(request):
         if check_email:
             messages.error(request, "Email already exists! Try with a different email")
             return redirect("add_member")
-        credit = CreditUnionBalance.objects.first()
+    
         
         # if amount:
         #     if float(amount) < 0:
@@ -74,14 +93,18 @@ def add_member(request):
         #     KYCDetails.objects.create(member_msisdn=member, first_name=first_name, last_name=last_name, email=email, dob=dob)
         #     Contribution.objects.create(member_msisdn=member, amount=amount)
         #     Transaction.objects.create(member_msisdn=member, amount=amount, transaction_type=TransactionEnum.DEPOSIT, description="Initial deposit")
-        
-        member = Member.objects.create(msisdn=msisdn)
+        user = request.user
+        member = Member.objects.create(msisdn=msisdn, user_id=user)
         KYCDetails.objects.create(member_msisdn=member, first_name=first_name, last_name=last_name, email=email, dob=dob)
             
         return redirect("view_members")
-    return render(request, "add_member.html", {"current_year": 2024})
+    union = CreditUnionBalance.objects.filter(user_id=request.user).first()
+    return render(request, "add_member.html", {"current_year": 2024, "union": union})
+
+
 
 # All filters will be done using the enums set in the models.py fio
+@login_required
 def view_members(request):
     # Create a filter for members
     sort = request.GET.get("sort", "first_name")
@@ -89,16 +112,14 @@ def view_members(request):
     sorted = order + sort
     filter = request.GET.get("filter", MemberStatus.ACTIVE)
     
-    members = Member.objects.annotate(first_name=F("kycdetails__first_name"),
+    members = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"),
                                         last_name=F("kycdetails__last_name"),
         total_contribution=Coalesce(Sum("contribution__amount", distinct=True), 0, output_field=DecimalField()),
         loan_debt=Coalesce(Sum("approvedloan__amount_left", distinct=True), 0, output_field=DecimalField())).order_by(sorted)
     
     if filter != "all":
-        members = members.filter(status=filter)
-    credit_union_balance = CreditUnionBalance.objects.first()
-    total_contributions = Contribution.objects.aggregate(Sum("amount"))["amount__sum"]
-    total_loans = ApprovedLoan.objects.aggregate(Sum("amount_left"))["amount_left__sum"]
+        members = members.filter(status=filter).filter(user_id=request.user)
+    
     paginator = Paginator(members, 10)
     page_number = request.GET.get("page")
 
@@ -109,39 +130,30 @@ def view_members(request):
     except EmptyPage:
         page_obj = paginator.page(paginator.num_pages)
     
-    if not credit_union_balance:
-        credit_union_balance = 0
-        CreditUnionBalance.objects.create(amount=credit_union_balance)
-    else:
-        credit_union_balance = credit_union_balance.amount
-    if not total_contributions:
-        total_contributions = 0
-    if not total_loans:
-        total_loans = 0
+  
+    union = CreditUnionBalance.objects.filter(user_id=request.user).first()
     return render(request, "view_members.html", {"current_year": 2024, "page_obj": page_obj, 
-                                                 "credit_union_balance": credit_union_balance, 
-                                                 "total_contribution": total_contributions, 
-                                                 "total_loan_debt": total_loans,
                                                  "sort":sort,
                                                  "order":order,
-                                                 "filter":filter})
+                                                 "filter":filter,
+                                                 "union": union})
 
 
-
+@login_required
 def member_info(request, msisdn):
-    member = Member.objects.annotate(first_name=F("kycdetails__first_name"), 
+    member = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"), 
                                      last_name=F("kycdetails__last_name"), 
                                      total_contribution=Sum("contribution__amount"), 
                                      loan_debt=Sum("approvedloan__amount_left"), 
                                      email=F("kycdetails__email"), 
                                      dob=F("kycdetails__dob")).get(msisdn=msisdn)
-    return render(request, "member.html", {"current_year": 2024, "member": member})
+    union = CreditUnionBalance.objects.filter(user_id=request.user).first()
+    return render(request, "member.html", {"current_year": 2024, "member": member, "union": union})
 
 
-
+@login_required
 def edit_member(request, msisdn):
-
-    member = Member.objects.annotate(first_name=F("kycdetails__first_name"), 
+    member = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"), 
                                      last_name=F("kycdetails__last_name"), 
                                      email=F("kycdetails__email"), 
                                      dob=F("kycdetails__dob")
@@ -152,7 +164,7 @@ def edit_member(request, msisdn):
         email = request.POST.get("email")
         first_name = request.POST.get("first_name")
         last_name = request.POST.get("last_name")
-        member_obj = Member.objects.get(msisdn=msisdn)
+        member_obj = Member.objects.filter(user_id=request.user).get(msisdn=msisdn)
         member_obj.msisdn = new_msisdn
         member_obj.save()        
         kyc = get_object_or_404(KYCDetails, member_msisdn=member)
@@ -162,10 +174,13 @@ def edit_member(request, msisdn):
         kyc.member_msisdn = member_obj 
         kyc.save()        
         return redirect("members", msisdn=new_msisdn)
-    return render(request, "edit_member.html", {"current_year": 2024, "member": member})
+    union = CreditUnionBalance.objects.filter(user_id=request.user).first()
+    return render(request, "edit_member.html", {"current_year": 2024, "member": member, "union": union})
 
+
+@login_required
 def withdraw(request, msisdn):
-    member = Member.objects.annotate(first_name=F("kycdetails__first_name"),
+    member = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"),
                                      last_name=F("kycdetails__last_name"),
                                      balance=ExpressionWrapper(Coalesce(Sum("contribution__amount", distinct=True), 0), DecimalField()),
                                      loan_debt=ExpressionWrapper(Coalesce(Sum("approvedloan__amount_left", distinct=True), 0), DecimalField()),
@@ -189,14 +204,23 @@ def withdraw(request, msisdn):
         else:
             time = datetime.now().time()
             date = datetime.now().date()
-        credit_union_balance = CreditUnionBalance.objects.first()
+        credit_union_balance = CreditUnionBalance.objects.filter(user_id=request.user).first()
         if float(credit_union_balance.amount) < float(member.final_balance):
             messages.error(request, "The credit union balance is less than the total savings of the member cannot withdraw")
             messages.info(request, f"Credit union balance: {credit_union_balance.amount} Member savings: {member.final_balance}")
             return redirect("withdraw", msisdn=msisdn)
+        if member.final_balance < 0:
+            messages.error(request, "The member has a negative balance and cannot withdraw")
+            return redirect("withdraw", msisdn=msisdn)
         credit_union_balance.amount = float(credit_union_balance.amount) - float(member.final_balance)
         
         credit_union_balance.save()
+        if member.loan_debt > 0:
+            
+            Transaction.objects.create(member_msisdn=member, date=date, time=time, 
+                                   transaction_type=TransactionEnum.LOAN_PAYMENT, 
+                                   amount=member.loan_debt, 
+                                   description="Payment of loan debt")        
         Transaction.objects.create(member_msisdn=member, date=date, time=time, 
                                    transaction_type=TransactionEnum.SAVINGS_WITHDRAWAL, 
                                    amount=member.final_balance, 
@@ -204,12 +228,14 @@ def withdraw(request, msisdn):
         member.status = MemberStatus.INACTIVE
         member.save()
         return redirect("home")
-    return render(request, "withdraw.html", {"current_year": 2024, "member": member})
+    union = CreditUnionBalance.objects.filter(user_id=request.user).first()
+    return render(request, "withdraw.html", {"current_year": 2024, "member": member, "union": union})
 
 # Contributions
+@login_required
 def make_contribution(request):
     # add ability to change the date when making a contribution
-    members = Member.objects.annotate(first_name=F("kycdetails__first_name"), last_name=F("kycdetails__last_name"))
+    members = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"), last_name=F("kycdetails__last_name"))
     if request.method == "POST":
         name = request.POST.get("member")
         amount = float(request.POST.get("amount"))
@@ -222,11 +248,11 @@ def make_contribution(request):
             return redirect("make_contribution")
         one = name.split(" ")
         try:
-            member = Member.objects.get(kycdetails__first_name=one[0], kycdetails__last_name=one[1])
+            member = Member.objects.filter(user_id=request.user).get(kycdetails__first_name=one[0], kycdetails__last_name=one[1])
         except Member.DoesNotExist:
             messages.error(request, "Member not found")
             return redirect("make_contribution")
-        Contribution.objects.create(member_msisdn=member, amount=amount, interest=interest)
+        Contribution.objects.create(member_msisdn=member, amount=amount, interest=interest, user_id=request.user)
         if date and time:
             pass
         elif date:
@@ -245,21 +271,22 @@ def make_contribution(request):
         CreditUnionBalance.objects.update(amount=F("amount") + amount)
         messages.success(request, "Contribution made successfully")
         return redirect("view_members")
-
-    return render(request, "make_contribution.html", {"current_year": 2024, "members": members})
+    union = CreditUnionBalance.objects.filter(user_id=request.user).first()
+    return render(request, "make_contribution.html", {"current_year": 2024, "members": members, "union": union})
 
 
 
 
 
 # History
+@login_required
 def view_history(request):
     #Create a filter and sort the transactions
     sort = request.GET.get("sort", "transaction_created")
     order = request.GET.get("order", "-")
     sorted = order + sort
     filter = request.GET.get("filter", "all")
-    members = Member.objects.annotate(first_name=F("kycdetails__first_name"), 
+    members = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"), 
                                       last_name=F("kycdetails__last_name"), 
                                       transaction_type=F("transaction__transaction_type"),  
                                       description=F("transaction__description"), 
@@ -278,20 +305,23 @@ def view_history(request):
         page_obj = paginator.page(1)
     except EmptyPage:
         page_obj = paginator.page(paginator.num_pages)
+    union = CreditUnionBalance.objects.filter(user_id=request.user).first()
     return render(request, "history.html", {"current_year": 2024, "page_obj": page_obj,
                                             "sort":sort,
                                             "order":order,
-                                            "filter":filter})
+                                            "filter":filter,
+                                            "union": union})
 
 
 
 # Loans
+@login_required
 def loan_request(request):
     sort = request.GET.get("sort", "loan_created")
     order = request.GET.get("order", "-")
     sorted = order + sort
     filter = request.GET.get("filter", "all")
-    members = Member.objects.annotate(first_name=F("kycdetails__first_name"), 
+    members = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"), 
                                       last_name=F("kycdetails__last_name"), 
                                       amount_requested=F("loanrequest__amount_requested"), 
                                       loan_status=F("loanrequest__status"), 
@@ -310,13 +340,15 @@ def loan_request(request):
         page_obj = paginator.page(1)
     except EmptyPage:
         page_obj = paginator.page(paginator.num_pages)
-    
+    union = CreditUnionBalance.objects.filter(user_id=request.user).first()
     return render(request, "loans_requests.html", {"current_year": 2024, "page_obj": page_obj,
                                           "sort":sort,
                                           "order":order,
-                                          "filter":filter})
+                                          "filter":filter,
+                                          "union":union})
 
 
+@login_required
 def approved_loans(request):
     sort = request.GET.get("sort", "updated")
     order = request.GET.get("order", "-")
@@ -326,7 +358,7 @@ def approved_loans(request):
                                       last_name=F("member_msisdn__kycdetails__last_name"), 
                                       total_amount=F("amount_of_loan") + F("interest"),
                                       loan_id=F("loan_request_id"),
-                                      ).filter(amount_of_loan__gt=0).order_by(sorted)
+                                      ).filter(amount_of_loan__gt=0).order_by(sorted).filter(user_id=request.user)
     if filter != "all":
         members = members.filter(status=filter)
 
@@ -339,13 +371,14 @@ def approved_loans(request):
         page_obj = paginator.page(1)
     except EmptyPage:
         page_obj = paginator.page(paginator.num_pages)
-    
+    union = CreditUnionBalance.objects.filter(user_id=request.user).first()
     return render(request, "loans.html", {"current_year": 2024, "page_obj": page_obj,
                                           "sort":sort,
                                           "order":order,
-                                          "filter":filter})
+                                          "filter":filter,
+                                          "union":union})
 
-
+@login_required
 def loan_details(request, loan_id):
     loan = LoanRequest.objects.annotate(first_name=F("member_msisdn__kycdetails__first_name"), 
                                         last_name=F("member_msisdn__kycdetails__last_name"), 
@@ -353,7 +386,7 @@ def loan_details(request, loan_id):
                                         loan_status=F("status"), 
                                         date=F("request_date"), 
                                         loan_id=F("id")).get(id=loan_id)
-    member = Member.objects.get(msisdn=loan.member_msisdn.msisdn)
+    member = Member.objects.filter(user_id=request.user).get(msisdn=loan.member_msisdn.msisdn)
     year = datetime.now().year + 1
     month = datetime.now().month
     day = datetime.now().day
@@ -378,7 +411,7 @@ def loan_details(request, loan_id):
     if request.method == "POST":
         value = request.POST.get("button")
         if value == "approve":
-            credit_union_balance = CreditUnionBalance.objects.first()
+            credit_union_balance = CreditUnionBalance.objects.filter(user_id=request.user).first()
             if credit_union_balance.amount <= loan.amount_requested:
                 messages.error(request, "The amount being requested for loan is more than the available balance in the credit union!")
                 messages.info(request, f"Amount available in the credit union: {credit_union_balance.amount} Amount being requested: {loan.amount_requested}")
@@ -393,7 +426,7 @@ def loan_details(request, loan_id):
             date_of_loan = request.POST.get("due_date")
             if date_of_loan:
                 due_date = date_of_loan
-            member = Member.objects.get(msisdn=loan.member_msisdn.msisdn)
+            member = Member.objects.filter(user_id=request.user).get(msisdn=loan.member_msisdn.msisdn)
             if date and time:
                 pass
             elif date:
@@ -409,7 +442,8 @@ def loan_details(request, loan_id):
                                         interest=interest, 
                                         end_of_loan_date=due_date,
                                         monthly_deduction=amount_to_deduct/12,
-                                        amount_left=amount_to_deduct)
+                                        amount_left=amount_to_deduct,
+                                        user_id=request.user)
             credit_union_balance.amount = float(credit_union_balance.amount) - float(loan.amount_requested)
             credit_union_balance.save()
             Transaction.objects.create(member_msisdn=member, 
@@ -425,12 +459,13 @@ def loan_details(request, loan_id):
             loan.status = "REJECTED"
             loan.save()
         return redirect("loan_details", loan_id=loan_id)
-        
-    return render(request, "loan_details.html", {"current_year": 2024, "loan": loan, "approved": approved, "due_date": due_date})
+    union = CreditUnionBalance.objects.filter(user_id=request.user).first()
+    return render(request, "loan_details.html", {"current_year": 2024, "loan": loan, "approved": approved, "due_date": due_date, "union": union})
 
+@login_required
 def input_loans(request):
     # Make it so the person can add his own date when making the loan request
-    members = Member.objects.annotate(first_name=F("kycdetails__first_name"), last_name=F("kycdetails__last_name"))
+    members = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"), last_name=F("kycdetails__last_name"))
     if request.method == "POST":
         name = request.POST.get("member")
         amount = float(request.POST.get("loan_amount"))
@@ -445,7 +480,7 @@ def input_loans(request):
             messages.error(request, "Loan amount cannot be negative")
             return redirect("input_loans")
         try:
-            member = Member.objects.get(kycdetails__first_name=one[0], kycdetails__last_name=one[1])
+            member = Member.objects.filter(user_id=request.user, status=MemberStatus.ACTIVE).get(kycdetails__first_name=one[0], kycdetails__last_name=one[1])
         except Member.DoesNotExist:
             messages.error(request, "Member not found")
             return redirect("input_loans")
@@ -465,8 +500,11 @@ def input_loans(request):
                                    request_time=time)
 
         return redirect("loan_request")
-    return render(request, "input_loans.html", {"current_year": 2024, "members": members})
+    union = CreditUnionBalance.objects.filter(user_id=request.user).first()
+    return render(request, "input_loans.html", {"current_year": 2024, "members": members, "union": union})
 
+
+@login_required
 def pay_loan(request, loan_id):
     loan = LoanRequest.objects.get(id=loan_id)
     approved = ApprovedLoan.objects.get(loan_request_id=loan)
@@ -498,8 +536,9 @@ def pay_loan(request, loan_id):
                                        transaction_type=TransactionEnum.LOAN_PAYMENT, 
                                        amount=amount_paid, description="Loan payment", 
                                        date=date, time=time)
-        credit_union_balance = CreditUnionBalance.objects.first()
+        credit_union_balance = CreditUnionBalance.objects.filter(user_id=request.user).first()
         credit_union_balance.amount = float(credit_union_balance.amount) + amount_paid
         credit_union_balance.save()
         return redirect("loan_details", loan_id=loan_id)
-    return render(request, "pay_loan.html", {"current_year": 2024, "loan": loan})
+    union = CreditUnionBalance.objects.filter(user_id=request.user).first()
+    return render(request, "pay_loan.html", {"current_year": 2024, "loan": loan, "union": union})

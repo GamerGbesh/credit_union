@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Credit Union{% endblock %}
+<body>
+    {% block content %}
+    
+    <main>
+        <section>
+            <h1>Create a Credit Union</h1>
+            <form action="{% url 'create_union' %}" method="POST">
+                {% csrf_token %}
+                <div class="form-group">
+    
+                    <div class="mb-3">
+                        <label for="exampleInputEmail1" class="form-label">Name of Credit Union</label>
+                        <input type="text" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp" name="name" required>
+                    </div>
+                    <p>Max Length: 50</p>
+                    <button type="submit" class="btn btn-primary">Create</button>
+            </form>
+        </section>
+
+    </main>
+
+    {% endblock %}
+</body>
+</html>

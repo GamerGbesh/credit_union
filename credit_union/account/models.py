@@ -25,6 +25,7 @@ class TransactionEnum(models.TextChoices):
     LOAN_WITHDRAWAL = 'LOAN WITHDRAWAL', 'Loan Withdrawal'
 
 class Member(models.Model):
+    user_id = models.ForeignKey('auth.User', on_delete=models.CASCADE)
     msisdn = models.IntegerField(primary_key=True)
     status = models.CharField(
         max_length=10,
@@ -45,6 +46,7 @@ class KYCDetails(models.Model):
 
 class Contribution(models.Model):
     id = models.AutoField(primary_key=True)
+    user_id = models.ForeignKey('auth.User', on_delete=models.CASCADE)
     member_msisdn = models.ForeignKey(Member, on_delete=models.CASCADE)
     transaction_date = models.DateTimeField(auto_now_add=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -65,6 +67,7 @@ class LoanRequest(models.Model):
 # Put the request_time and date on approved_loan
 class ApprovedLoan(models.Model):
     id = models.AutoField(primary_key=True)
+    user_id = models.ForeignKey('auth.User', on_delete=models.CASCADE)
     member_msisdn = models.ForeignKey(Member, on_delete=models.CASCADE)
     loan_request_id = models.ForeignKey(LoanRequest, on_delete=models.CASCADE)
     amount_of_loan = models.DecimalField(max_digits=10, decimal_places=2)
@@ -85,6 +88,8 @@ class ApprovedLoan(models.Model):
 
 class CreditUnionBalance(models.Model):
     id = models.AutoField(primary_key=True)
+    user_id = models.ForeignKey('auth.User', on_delete=models.CASCADE)
+    name = models.CharField(max_length=50)
     amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
