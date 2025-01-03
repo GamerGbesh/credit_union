@@ -8,7 +8,7 @@
             <h1>Add New Member</h1>
             <form action="add" method="POST">
                 {% csrf_token %}
-                <div class="form-group">
+                {% comment %} <div class="form-group">
                     <label for="first_name">First Name*</label></br>
                     <input type="text" id="first_name" name="first_name" required>
                 </div>
@@ -28,7 +28,9 @@
                     <label for="dob">Date of Birth</label></br>
                     <input type="date" value="2020-01-01" min="1900-01-01" max="2023-12-31" id="dob" name="dob">
                 </div>
-            
+             {% endcomment %}
+
+                {{ form.as_p }}
                 <button type="submit" class="btn btn-primary">Add Member</button>
             </form>
         </section>

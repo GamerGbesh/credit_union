@@ -26,7 +26,7 @@ class TransactionEnum(models.TextChoices):
 
 class Member(models.Model):
     user_id = models.ForeignKey('auth.User', on_delete=models.CASCADE)
-    msisdn = models.IntegerField(primary_key=True)
+    msisdn = models.CharField(max_length=15, unique=True, primary_key=True)
     status = models.CharField(
         max_length=10,
         choices=MemberStatus.choices,

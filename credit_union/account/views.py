@@ -1,4 +1,4 @@
-from django.shortcuts import render, HttpResponse, get_object_or_404, redirect
+from django.shortcuts import render, get_object_or_404, redirect
 from .models import *
 from django.db.models import F, Sum, DecimalField, DateTimeField, ExpressionWrapper
 from datetime import datetime
@@ -6,9 +6,10 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib import messages
 from django.db.models.functions import Coalesce
 from django.contrib.auth.decorators import login_required
+from .forms import MemberForm
+from django.db import transaction
 
 # Create your views here.
-
 # Members
 def home(request):
     if request.user.is_authenticated:
@@ -30,6 +31,7 @@ def home(request):
 
 
 @login_required
+@transaction.atomic
 def add_member(request):
     # Add a field to take care of the date joined by the individual if they are a new member
     # If edited, then show the date edited
@@ -46,64 +48,45 @@ def add_member(request):
         Checks if a member already exists in the database, if not adds them
         Returns a message if the member already exists
         """
-        first_name = request.POST.get("first_name").strip()
-        last_name = request.POST.get("last_name").strip()
-        msisdn = request.POST.get("phone").strip()
-        if len(msisdn) != 10:
-            messages.error(request, "Phone number must be 10 digits")
-            return redirect("add_member")
-        if not msisdn.isdigit():
-            messages.error(request, "Phone number must be a number")
-            return redirect("add_member")
-        if msisdn[0] != "0":
-            messages.error(request, "Phone number must start with 0")
-            return redirect("add_member") 
-        email = request.POST.get("email").strip()
-        if not email:
-            email = None
-        dob = request.POST.get("dob")
-        
-        # amount = request.POST.get("amount")
-        # if not amount:
-        #     amount = 0
-        all_members = [member.msisdn for member in Member.objects.all()]
-        if email:
-            check_email = KYCDetails.objects.filter(email=email).exists()
-        else:
-            check_email = False
-        
-        if int(msisdn) in all_members:
-            messages.error(request, "Phone number already exists! Try with a different number")
-            return redirect("add_member")
-        
-        if check_email:
-            messages.error(request, "Email already exists! Try with a different email")
-            return redirect("add_member")
-    
-        
-        # if amount:
-        #     if float(amount) < 0:
-        #         messages.error(request, "The balance cannot be negative")
-        #         return redirect("add_member")
-        #     if not credit:
-        #         CreditUnionBalance.objects.create(amount=amount)
-        #     else:
-        #         CreditUnionBalance.objects.update(amount=F("amount") + amount)
-        #     member = Member.objects.create(msisdn=msisdn)
-        #     KYCDetails.objects.create(member_msisdn=member, first_name=first_name, last_name=last_name, email=email, dob=dob)
-        #     Contribution.objects.create(member_msisdn=member, amount=amount)
-        #     Transaction.objects.create(member_msisdn=member, amount=amount, transaction_type=TransactionEnum.DEPOSIT, description="Initial deposit")
-        user = request.user
-        member = Member.objects.create(msisdn=msisdn, user_id=user)
-        KYCDetails.objects.create(member_msisdn=member, first_name=first_name, last_name=last_name, email=email, dob=dob)
+        form = MemberForm(request.POST)
+        if form.is_valid():
+            first_name = form.cleaned_data["first_name"]
+            last_name = form.cleaned_data["last_name"]
+            msisdn = form.cleaned_data["full_number"]
+            email = form.cleaned_data["email"]
+            dob = form.cleaned_data["dob"]
+            if not msisdn:
+                messages.error(request, "Please enter a phone number")
+                return redirect("add_member")
+            if Member.objects.filter(msisdn=msisdn).exists():
+                messages.error(request, "Phone number already exists! Try with a different number")
+                return redirect("add_member")
             
-        return redirect("view_members")
+            if email:
+                check_email = KYCDetails.objects.filter(email=email).exists()
+            else:
+                check_email = False
+                email = None
+            
+            if check_email:
+                messages.error(request, "Email already exists! Try with a different email")
+                return redirect("add_member")
+            user = request.user
+            member = Member(msisdn=msisdn, user_id=user)
+            details = KYCDetails(member_msisdn=member, first_name=first_name, last_name=last_name, email=email, dob=dob)
+            details.save()
+            member.save()
+            
+            
+            return redirect("view_members")
+    else:
+        form = MemberForm()
     union = CreditUnionBalance.objects.filter(user_id=request.user).first()
-    return render(request, "add_member.html", {"current_year": 2024, "union": union})
+    return render(request, "add_member.html", {"current_year": 2024, "union": union, "form": form})
 
 
 
-# All filters will be done using the enums set in the models.py fio
+# All filters will be done using the enums set in the models.py
 @login_required
 def view_members(request):
     # Create a filter for members
@@ -152,6 +135,7 @@ def member_info(request, msisdn):
 
 
 @login_required
+@transaction.atomic
 def edit_member(request, msisdn):
     member = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"), 
                                      last_name=F("kycdetails__last_name"), 
@@ -160,7 +144,7 @@ def edit_member(request, msisdn):
                                      ).get(msisdn=msisdn)
     
     if request.method == "POST":
-        new_msisdn = int(request.POST.get("phone"))
+        new_msisdn = (request.POST.get("phone"))
         email = request.POST.get("email")
         first_name = request.POST.get("first_name")
         last_name = request.POST.get("last_name")
@@ -179,6 +163,7 @@ def edit_member(request, msisdn):
 
 
 @login_required
+@transaction.atomic
 def withdraw(request, msisdn):
     member = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"),
                                      last_name=F("kycdetails__last_name"),
@@ -216,11 +201,20 @@ def withdraw(request, msisdn):
         
         credit_union_balance.save()
         if member.loan_debt > 0:
-            
+            contributions = Contribution.objects.filter(member_msisdn=member)
+            for contribution in contributions:
+                contribution.amount = 0
+                contribution.interest = 0
+                contribution.save()
+            loans = ApprovedLoan.objects.filter(member_msisdn=member, status=StatusEnum.ACTIVE)
+            for loan in loans:
+                loan.status = StatusEnum.PAID
+                loan.amount_left = 0
+                loan.save()
             Transaction.objects.create(member_msisdn=member, date=date, time=time, 
                                    transaction_type=TransactionEnum.LOAN_PAYMENT, 
                                    amount=member.loan_debt, 
-                                   description="Payment of loan debt")        
+                                   description="Payment of all loan debt")        
         Transaction.objects.create(member_msisdn=member, date=date, time=time, 
                                    transaction_type=TransactionEnum.SAVINGS_WITHDRAWAL, 
                                    amount=member.final_balance, 
@@ -233,6 +227,7 @@ def withdraw(request, msisdn):
 
 # Contributions
 @login_required
+@transaction.atomic
 def make_contribution(request):
     # add ability to change the date when making a contribution
     members = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"), last_name=F("kycdetails__last_name"))
@@ -296,7 +291,7 @@ def view_history(request):
 
     if filter != "all":
         members = members.filter(transaction_type=filter)
-    paginator = Paginator(members, 10)
+    paginator = Paginator(members, 20)
     page_number = request.GET.get("page")
 
     try:
@@ -379,6 +374,7 @@ def approved_loans(request):
                                           "union":union})
 
 @login_required
+@transaction.atomic
 def loan_details(request, loan_id):
     loan = LoanRequest.objects.annotate(first_name=F("member_msisdn__kycdetails__first_name"), 
                                         last_name=F("member_msisdn__kycdetails__last_name"), 
@@ -393,13 +389,13 @@ def loan_details(request, loan_id):
     due_date = datetime(year, month, day).date()
     try:
         approved = ApprovedLoan.objects.get(loan_request_id=loan)
-        if approved.amount_left == 0 and approved.status != "PAID":
-            approved.status = "PAID"
+        if approved.amount_left == 0 and approved.status != StatusEnum.PAID:
+            approved.status = StatusEnum.PAID  
             approved.save()
-        elif datetime.now().date() > approved.end_of_loan_date and approved.status != "PAID":
+        elif datetime.now().date() > approved.end_of_loan_date and approved.status != StatusEnum.PAID:
             approved.status = "OVERDUE"
             approved.save()
-        if approved.status == "PAID":
+        if approved.status == StatusEnum.PAID:
             messages.success(request, "Loan has been paid")
         elif approved.status == "OVERDUE":
             messages.error(request, "Loan is overdue")
@@ -456,13 +452,14 @@ def loan_details(request, loan_id):
             
             
         elif value == "reject":
-            loan.status = "REJECTED"
+            loan.status = LoanStatus.REJECTED
             loan.save()
         return redirect("loan_details", loan_id=loan_id)
     union = CreditUnionBalance.objects.filter(user_id=request.user).first()
     return render(request, "loan_details.html", {"current_year": 2024, "loan": loan, "approved": approved, "due_date": due_date, "union": union})
 
 @login_required
+@transaction.atomic
 def input_loans(request):
     # Make it so the person can add his own date when making the loan request
     members = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"), last_name=F("kycdetails__last_name"))
@@ -505,6 +502,7 @@ def input_loans(request):
 
 
 @login_required
+@transaction.atomic
 def pay_loan(request, loan_id):
     loan = LoanRequest.objects.get(id=loan_id)
     approved = ApprovedLoan.objects.get(loan_request_id=loan)

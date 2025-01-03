@@ -3,7 +3,8 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.contrib.auth.forms import UserCreationForm
 from account.models import CreditUnionBalance
-from django.contrib.auth.models import User
+from account.forms import CustomUserCreationForm
+
 
 
 # Create your views here.
@@ -30,40 +31,17 @@ def logout_user(request):
 
 def signup(request):
     if request.method == "POST":
-        # username = request.POST.get("username").lower()
-        # email = request.POST.get("email")
-        # password = request.POST.get("password")
-        # validate_password = request.POST.get("password2")
-
-        # if len(password) < 8:
-        #     messages.error(request, "Password is less than 8 characters")
-        #     return render(request, "authentication/signup.html", {"red":True})
-        # if username in password.lower():
-        #     messages.error(request, "Password is too similar to username")
-        #     return render(request, "authentication/signup.html", {"red":True})
-        # if password != validate_password:
-        #     messages.error(request, "Passwords do not match!")
-        #     return render(request, "authentication/signup.html", {"red":True})
-        # if User.objects.filter(username=username).exists():
-        #     messages.error(request, "Username already exists")
-        #     return redirect("signup")
-        # if User.objects.filter(email=email).exists():
-        #     messages.error(request, "Email already exists")
-        #     return redirect("signup")
-        # user = User.objects.create_user(username=username, email=email, password=password)
-        # user.save()
-
-        form = UserCreationForm(request.POST)
+        form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             form.save()
-            username = form.cleaned_data.get("username")
+            username = form.cleaned_data.get("username").lower()
             password = form.cleaned_data.get("password1")
-            user = authenticate(username=username, password=password)
+            user = authenticate(username=username.lower(), password=password)
             messages.success(request, "Account created successfully")
             login(request, user)
-            return redirect("home")
+            return redirect("create_union")
     else:
-        form = UserCreationForm()
+        form = CustomUserCreationForm()
     return render(request, "authentication/signup.html", {"form": form})
 
 

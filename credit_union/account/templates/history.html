@@ -51,11 +51,10 @@
             </table>
         </section>
         <div class="pagination">{% if page_obj.paginator.num_pages != 1%}
-            <span id="page_num">
-                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-            </span>
+         
             <div class="page">
                 {% if page_obj.has_previous %}
+                    <a href="?page=1">First</a>
                     <a href="?page={{ page_obj.previous_page_number }}">Back</a>
                 {% endif %}
         
@@ -69,6 +68,7 @@
         
                 {% if page_obj.has_next %}
                     <a href="?page={{ page_obj.next_page_number }}">Next</a>
+                    <a href="?page={{ page_obj.paginator.num_pages }}">Last</a>
                 {% endif %}
             {% endif %}
     </main>

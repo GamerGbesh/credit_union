@@ -89,6 +89,8 @@ DATABASES = {
         "NAME": "project",
         "USER": "credit",
         "PASSWORD": "union",
+        "HOST": "",
+        "PORT": "",
     }
 }
 
