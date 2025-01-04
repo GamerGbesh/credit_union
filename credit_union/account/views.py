@@ -10,7 +10,6 @@ from .forms import MemberForm
 from django.db import transaction
 
 # Create your views here.
-# Members
 def home(request):
     if request.user.is_authenticated:
         union = CreditUnionBalance.objects.filter(user_id=request.user).first()
@@ -33,8 +32,6 @@ def home(request):
 @login_required
 @transaction.atomic
 def add_member(request):
-    # Add a field to take care of the date joined by the individual if they are a new member
-    # If edited, then show the date edited
     """This function is used to add a new member to the database
 
     Args:
@@ -86,7 +83,7 @@ def add_member(request):
 
 
 
-# All filters will be done using the enums set in the models.py
+# All filters will be done using the enums set in models.py
 @login_required
 def view_members(request):
     # Create a filter for members
@@ -419,8 +416,9 @@ def loan_details(request, loan_id):
             date = request.POST.get("date")
             time_gotten = request.POST.get("time")
             interest_rate = float(request.POST.get("interest"))/100
-            # interest = interest * float(loan.amount_requested)
-            # amount_to_deduct = float(loan.amount_requested) + interest
+            if interest_rate < 0:
+                messages.error(request, "Interest rate cannot be negative")
+                return redirect("loan_details", loan_id=loan_id)
             date_of_loan = request.POST.get("due_date")
             if date_of_loan:
                 due_date = date_of_loan
@@ -556,10 +554,12 @@ def pay_loan(request, loan_id):
 
 def prorating(amount, interest_rate, due_date, date_accepted):
     amount = float(amount)
-    due_year, due_month, due_day = due_date.split("-")
-    date_year, date_month, date_day = date_accepted.split("-")
-    due_date = datetime(int(due_year), int(due_month), int(due_day)).date()
-    date_accepted = datetime(int(date_year), int(date_month), int(date_day)).date()
+    if isinstance(interest_rate, str):
+        due_year, due_month, due_day = due_date.split("-")
+        due_date = datetime(int(due_year), int(due_month), int(due_day)).date()
+    if isinstance(date_accepted, str):  
+        date_year, date_month, date_day = date_accepted.split("-")
+        date_accepted = datetime(int(date_year), int(date_month), int(date_day)).date()
     interest = amount * interest_rate
     months = round((due_date - date_accepted).days / 30)
     interest = interest * (months / 12)
