@@ -1,7 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from .models import *
 from django.db.models import F, Sum, DecimalField, DateTimeField, ExpressionWrapper
-from datetime import datetime
+from datetime import datetime, time
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib import messages
 from django.db.models.functions import Coalesce
@@ -176,18 +176,18 @@ def withdraw(request, msisdn):
                                      ).get(msisdn=msisdn)
     if request.method == "POST":
         date = request.POST.get("date")
-        time = request.POST.get("time")
+        time_gotten = request.POST.get("time")
         if member.status == MemberStatus.INACTIVE:
             messages.error(request, f"{member.first_name} {member.last_name} is not an active member")
             return redirect("home")
-        if date and time:
+        if date and time_gotten:
             pass
         elif date:
-            time = datetime.now().time()
-        elif time:
+            time_gotten = datetime.now().time()
+        elif time_gotten:
             date = datetime.now().date()
         else:
-            time = datetime.now().time()
+            time_gotten = datetime.now().time()
             date = datetime.now().date()
         credit_union_balance = CreditUnionBalance.objects.filter(user_id=request.user).first()
         if float(credit_union_balance.amount) < float(member.final_balance):
@@ -211,11 +211,11 @@ def withdraw(request, msisdn):
                 loan.status = StatusEnum.PAID
                 loan.amount_left = 0
                 loan.save()
-            Transaction.objects.create(member_msisdn=member, date=date, time=time, 
+            Transaction.objects.create(member_msisdn=member, date=date, time=time_gotten, 
                                    transaction_type=TransactionEnum.LOAN_PAYMENT, 
                                    amount=member.loan_debt, 
                                    description="Payment of all loan debt")        
-        Transaction.objects.create(member_msisdn=member, date=date, time=time, 
+        Transaction.objects.create(member_msisdn=member, date=date, time=time_gotten, 
                                    transaction_type=TransactionEnum.SAVINGS_WITHDRAWAL, 
                                    amount=member.final_balance, 
                                    description="Withdrawal of total savings")
@@ -235,7 +235,7 @@ def make_contribution(request):
         name = request.POST.get("member")
         amount = float(request.POST.get("amount"))
         date = request.POST.get("date")
-        time = request.POST.get("time")
+        time_gotten = request.POST.get("time")
         interest = float(request.POST.get("interest"))/100
         interest = interest * amount
         if amount < 0:
@@ -248,21 +248,21 @@ def make_contribution(request):
             messages.error(request, "Member not found")
             return redirect("make_contribution")
         Contribution.objects.create(member_msisdn=member, amount=amount, interest=interest, user_id=request.user)
-        if date and time:
+        if date and time_gotten:
             pass
         elif date:
-            time = datetime.now().time()
-        elif time:
+            time_gotten = datetime.now().time()
+        elif time_gotten:
             date = datetime.now().date()
         else:
-            time = datetime.now().time()
+            time_gotten = datetime.now().time()
             date = datetime.now().date()
         Transaction.objects.create(member_msisdn=member, 
                                        transaction_type=TransactionEnum.DEPOSIT, 
                                        amount=amount, 
                                        description="Contribution",
                                        date=date,
-                                       time=time)
+                                       time=time_gotten)
         CreditUnionBalance.objects.update(amount=F("amount") + amount)
         messages.success(request, "Contribution made successfully")
         return redirect("view_members")
@@ -415,31 +415,40 @@ def loan_details(request, loan_id):
             loan.status = LoanStatus.APPROVED
             loan.save()
             date = request.POST.get("date")
-            time = request.POST.get("time")
-            interest = float(request.POST.get("interest"))/100
-            interest = interest * float(loan.amount_requested)
-            amount_to_deduct = float(loan.amount_requested) + interest
+            time_gotten = request.POST.get("time")
+            interest_rate = float(request.POST.get("interest"))/100
+            # interest = interest * float(loan.amount_requested)
+            # amount_to_deduct = float(loan.amount_requested) + interest
             date_of_loan = request.POST.get("due_date")
             if date_of_loan:
                 due_date = date_of_loan
+
+            
             member = Member.objects.filter(user_id=request.user).get(msisdn=loan.member_msisdn.msisdn)
-            if date and time:
+            if date and time_gotten:
+                time_hour, time_minute = time_gotten.split(":")
+                time_gotten = time(int(time_hour), int(time_minute))
                 pass
             elif date:
-                time = datetime.now().time()
-            elif time:
+                time_gotten = datetime.now().time()
+            elif time_gotten:
                 date = datetime.now().date()
             else:
                 date = datetime.now().date()
-                time = datetime.now().time()
+                time_gotten = datetime.now().time()
+            
+            amount_to_deduct, interest, months, date_accepted = prorating(loan.amount_requested, interest_rate, due_date, date)
+            
+
             ApprovedLoan.objects.create(member_msisdn=member,
                                         loan_request_id=loan, 
                                         amount_of_loan=loan.amount_requested, 
                                         interest=interest, 
                                         end_of_loan_date=due_date,
-                                        monthly_deduction=amount_to_deduct/12,
+                                        monthly_deduction=amount_to_deduct/months,
                                         amount_left=amount_to_deduct,
-                                        user_id=request.user)
+                                        user_id=request.user,
+                                        created=date_accepted)
             credit_union_balance.amount = float(credit_union_balance.amount) - float(loan.amount_requested)
             credit_union_balance.save()
             Transaction.objects.create(member_msisdn=member, 
@@ -447,7 +456,7 @@ def loan_details(request, loan_id):
                                        amount=loan.amount_requested, 
                                        description=loan.loan_description,
                                        date=date,
-                                       time=time)
+                                       time=time_gotten)
             approved = ApprovedLoan.objects.filter(loan_request_id=loan)
             
             
@@ -471,7 +480,7 @@ def input_loans(request):
             messages.error(request, "Please enter the first name and last name of the member")
             return redirect("input_loans")
         date = request.POST.get("date")
-        time = request.POST.get("time")
+        time_gotten = request.POST.get("time")
         loan_purpose = request.POST.get("loan_purpose")
         if amount < 0:
             messages.error(request, "Loan amount cannot be negative")
@@ -481,20 +490,20 @@ def input_loans(request):
         except Member.DoesNotExist:
             messages.error(request, "Member not found")
             return redirect("input_loans")
-        if date and time:
+        if date and time_gotten:
             pass
         elif date:
-            time = datetime.now().time()
-        elif time:
+            time_gotten = datetime.now().time()
+        elif time_gotten:
             date = datetime.now().date()
         else:
-            time = datetime.now().time()
+            time_gotten = datetime.now().time()
             date = datetime.now().date()
         LoanRequest.objects.create(member_msisdn=member, 
                                    amount_requested=amount, 
                                    loan_purpose=loan_purpose, 
                                    request_date=date, 
-                                   request_time=time)
+                                   request_time=time_gotten)
 
         return redirect("loan_request")
     union = CreditUnionBalance.objects.filter(user_id=request.user).first()
@@ -509,7 +518,7 @@ def pay_loan(request, loan_id):
     if request.method == "POST":
         amount_paid = float(request.POST.get("amount"))
         date = request.POST.get("date")
-        time = request.POST.get("time")
+        time_gotten = request.POST.get("time")
         if amount_paid < 0:
             messages.error(request, "Amount paid cannot be negative")
             return redirect("pay_loan", loan_id=loan_id)
@@ -521,22 +530,36 @@ def pay_loan(request, loan_id):
             return redirect("pay_loan", loan_id=loan_id)
         approved.amount_left = float(approved.amount_left) - amount_paid
         approved.save()
-        if date and time:
+        if date and time_gotten:
             pass
         elif date:
-            time = datetime.now().time()
-        elif time:
+            time_gotten = datetime.now().time()
+        elif time_gotten:
             date = datetime.now().date()
         else:
-            time = datetime.now().time()
+            time_gotten = datetime.now().time()
             date = datetime.now().date()
         Transaction.objects.create(member_msisdn=loan.member_msisdn, 
                                        transaction_type=TransactionEnum.LOAN_PAYMENT, 
                                        amount=amount_paid, description="Loan payment", 
-                                       date=date, time=time)
+                                       date=date, time=time_gotten)
         credit_union_balance = CreditUnionBalance.objects.filter(user_id=request.user).first()
         credit_union_balance.amount = float(credit_union_balance.amount) + amount_paid
         credit_union_balance.save()
         return redirect("loan_details", loan_id=loan_id)
     union = CreditUnionBalance.objects.filter(user_id=request.user).first()
     return render(request, "pay_loan.html", {"current_year": 2024, "loan": loan, "union": union})
+
+
+
+def prorating(amount, interest_rate, due_date, date_accepted):
+    amount = float(amount)
+    due_year, due_month, due_day = due_date.split("-")
+    date_year, date_month, date_day = date_accepted.split("-")
+    due_date = datetime(int(due_year), int(due_month), int(due_day)).date()
+    date_accepted = datetime(int(date_year), int(date_month), int(date_day)).date()
+    interest = amount * interest_rate
+    months = round((due_date - date_accepted).days / 30)
+    interest = interest * (months / 12)
+    total = amount + interest
+    return total, interest, months, date_accepted
