@@ -263,7 +263,9 @@ def make_contribution(request):
                                        description="Contribution",
                                        date=date,
                                        time=time_gotten)
-        CreditUnionBalance.objects.update(amount=F("amount") + amount)
+        union = CreditUnionBalance.objects.filter(user_id=request.user).first()
+        union.amount = float(union.amount) + amount
+        union.save()
         messages.success(request, "Contribution made successfully")
         return redirect("view_members")
     union = CreditUnionBalance.objects.filter(user_id=request.user).first()
