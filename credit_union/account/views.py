@@ -124,12 +124,13 @@ def view_members(request):
 
 @login_required
 def member_info(request, msisdn):
-    member = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"), 
-                                     last_name=F("kycdetails__last_name"), 
-                                     total_contribution=Sum("contribution__amount"), 
-                                     loan_debt=Sum("approvedloan__amount_left"), 
-                                     email=F("kycdetails__email"), 
-                                     dob=F("kycdetails__dob")).get(msisdn=msisdn)
+    member = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"),
+                                                                    last_name=F("kycdetails__last_name"),
+                                                                    total_contribution=Coalesce(Sum("contribution__amount", distinct=True), 0, output_field=DecimalField()),
+                                                                    loan_debt=Coalesce(Sum("approvedloan__amount_left", distinct=True), 0, output_field=DecimalField()),
+                                                                    email=F("kycdetails__email"),
+                                                                    dob=F("kycdetails__dob")
+                                                                    ).get(msisdn=msisdn)
     union = CreditUnionBalance.objects.filter(user_id=request.user).first()
     return render(request, "member.html", {"current_year": 2024, "member": member, "union": union})
 
@@ -571,12 +572,13 @@ def prorating(amount, interest_rate, due_date, date_accepted):
 
 
 def contributions_to_excel(request):
-    members = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"), 
-                                     last_name=F("kycdetails__last_name"), 
-                                     total_contribution=Sum("contribution__amount"), 
-                                     loan_debt=Sum("approvedloan__amount_left"), 
-                                     email=F("kycdetails__email"), 
-                                     dob=F("kycdetails__dob")) 
+    members = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"),
+                                                                    last_name=F("kycdetails__last_name"),
+                                                                    total_contribution=Coalesce(Sum("contribution__amount", distinct=True), 0, output_field=DecimalField()),
+                                                                    loan_debt=Coalesce(Sum("approvedloan__amount_left", distinct=True), 0, output_field=DecimalField()),
+                                                                    email=F("kycdetails__email"),
+                                                                    dob=F("kycdetails__dob")
+                                                                    ) 
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.cell(row=1, column=1).value = "First Name"
