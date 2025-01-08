@@ -1,4 +1,4 @@
-from django.shortcuts import render, get_object_or_404, redirect
+from django.shortcuts import render, get_object_or_404, redirect, HttpResponse
 from .models import *
 from django.db.models import F, Sum, DecimalField, DateTimeField, ExpressionWrapper
 from datetime import datetime, time
@@ -8,6 +8,9 @@ from django.db.models.functions import Coalesce
 from django.contrib.auth.decorators import login_required
 from .forms import MemberForm
 from django.db import transaction
+import openpyxl
+from openpyxl.utils import get_column_letter
+from openpyxl.styles import Font
 
 # Create your views here.
 def home(request):
@@ -109,14 +112,14 @@ def view_members(request):
         page_obj = paginator.page(1)
     except EmptyPage:
         page_obj = paginator.page(paginator.num_pages)
-    
   
     union = CreditUnionBalance.objects.filter(user_id=request.user).first()
     return render(request, "view_members.html", {"current_year": 2024, "page_obj": page_obj, 
                                                  "sort":sort,
                                                  "order":order,
                                                  "filter":filter,
-                                                 "union": union})
+                                                 "union": union
+                                                 })
 
 
 @login_required
@@ -565,3 +568,166 @@ def prorating(amount, interest_rate, due_date, date_accepted):
     interest = interest * (months / 12)
     total = amount + interest
     return total, interest, months, date_accepted
+
+
+def contributions_to_excel(request):
+    members = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"), 
+                                     last_name=F("kycdetails__last_name"), 
+                                     total_contribution=Sum("contribution__amount"), 
+                                     loan_debt=Sum("approvedloan__amount_left"), 
+                                     email=F("kycdetails__email"), 
+                                     dob=F("kycdetails__dob")) 
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.cell(row=1, column=1).value = "First Name"
+    ws.cell(row=1, column=2).value = "Last Name"
+    ws.cell(row=1, column=3).value = "Phone Number"
+    ws.cell(row=1, column=4).value = "Total Contribution"
+    ws.cell(row=1, column=5).value = "Loan Debt"
+    ws.cell(row=1, column=6).value = "Email"
+    ws.cell(row=1, column=7).value = "Date of Birth"
+    ws.cell(row=1, column=8).value = "Status"
+    
+    for i in range(1, 9):
+        ws.cell(row=1, column=i).font = Font(b=True)
+        ws.column_dimensions[get_column_letter(i)].width += 5
+
+    for i, member in enumerate(members, 2):
+        ws.cell(row=i, column=1).value = member.first_name
+        ws.cell(row=i, column=2).value = member.last_name
+        ws.cell(row=i, column=3).value = member.msisdn
+        ws.cell(row=i, column=4).value = member.total_contribution
+        ws.cell(row=i, column=5).value = member.loan_debt
+        ws.cell(row=i, column=6).value = member.email
+        ws.cell(row=i, column=7).value = member.dob
+        ws.cell(row=i, column=8).value = member.status
+        
+        
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="contribution.xlsx"'
+    
+    # Save the workbook to the response
+    wb.save(response)
+    
+    return response
+    
+
+def requests_to_excel(request):
+    members = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"), 
+                                      last_name=F("kycdetails__last_name"), 
+                                      amount_requested=F("loanrequest__amount_requested"), 
+                                      loan_status=F("loanrequest__status"), 
+                                      date=F("loanrequest__request_date"), 
+                                      loan_id=F("loanrequest__id"),
+                                      loan_created=F("loanrequest__created")).filter(amount_requested__gt=0)
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.cell(row=1, column=1).value = "First Name"
+    ws.cell(row=1, column=2).value = "Last Name"
+    ws.cell(row=1, column=3).value = "Amount Requested"
+    ws.cell(row=1, column=4).value = "Loan Status"
+    ws.cell(row=1, column=5).value = "Date"
+
+    for i in range(1, 6):
+        ws.cell(row=1, column=i).font = Font(b=True)
+        ws.column_dimensions[get_column_letter(i)].width += 5
+
+    for i, member in enumerate(members, 2):
+        ws.cell(row=i, column=1).value = member.first_name
+        ws.cell(row=i, column=2).value = member.last_name
+        ws.cell(row=i, column=3).value = member.amount_requested
+        ws.cell(row=i, column=4).value = member.loan_status
+        ws.cell(row=i, column=5).value = member.date
+   
+        
+        
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="loan Requests.xlsx"'
+    
+    # Save the workbook to the response
+    wb.save(response)
+    
+    return response
+
+def loans_to_excel(request):
+    members = ApprovedLoan.objects.annotate(first_name=F("member_msisdn__kycdetails__first_name"), 
+                                      last_name=F("member_msisdn__kycdetails__last_name"), 
+                                      total_amount=F("amount_of_loan") + F("interest"),
+                                      loan_id=F("loan_request_id"),
+                                      ).filter(amount_of_loan__gt=0).filter(user_id=request.user)
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.cell(row=1, column=1).value = "First Name"
+    ws.cell(row=1, column=2).value = "Last Name"
+    ws.cell(row=1, column=3).value = "Amount of Loan"
+    ws.cell(row=1, column=4).value = "Interest"
+    ws.cell(row=1, column=5).value = "Total Amount"
+    ws.cell(row=1, column=6).value = "Amount Left"
+    ws.cell(row=1, column=7).value = "Status"
+    
+    for i in range(1, 8):
+        ws.cell(row=1, column=i).font = Font(b=True)
+        ws.column_dimensions[get_column_letter(i)].width += 5
+
+    for i, member in enumerate(members, 2):
+        ws.cell(row=i, column=1).value = member.first_name
+        ws.cell(row=i, column=2).value = member.last_name
+        ws.cell(row=i, column=3).value = member.amount_of_loan
+        ws.cell(row=i, column=4).value = member.interest
+        ws.cell(row=i, column=5).value = member.total_amount
+        ws.cell(row=i, column=6).value = member.amount_left
+        ws.cell(row=i, column=7).value = member.status        
+        
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="loans.xlsx"'
+    
+    # Save the workbook to the response
+    wb.save(response)
+    
+    return response
+
+def history_to_excel(request):
+    members = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"), 
+                                      last_name=F("kycdetails__last_name"), 
+                                      transaction_type=F("transaction__transaction_type"),  
+                                      description=F("transaction__description"), 
+                                      amount=F("transaction__amount"),
+                                      transaction_created=ExpressionWrapper(F("transaction__date") + F("transaction__time"), output_field=DateTimeField()),
+                                      date = F("transaction__date")).filter(amount__gt=0)
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.cell(row=1, column=1).value = "First Name"
+    ws.cell(row=1, column=2).value = "Last Name"
+    ws.cell(row=1, column=3).value = "Transaction Type"
+    ws.cell(row=1, column=5).value = "Description"
+    ws.cell(row=1, column=4).value = "Amount"
+    ws.cell(row=1, column=6).value = "Date"
+    
+    for i in range(1, 7):
+        ws.cell(row=1, column=i).font = Font(b=True)
+        ws.column_dimensions[get_column_letter(i)].width += 5
+
+    for i, member in enumerate(members, 2):
+        ws.cell(row=i, column=1).value = member.first_name
+        ws.cell(row=i, column=2).value = member.last_name
+        ws.cell(row=i, column=3).value = member.transaction_type
+        ws.cell(row=i, column=5).value = member.description
+        ws.cell(row=i, column=4).value = member.amount
+        ws.cell(row=i, column=6).value = member.date
+
+        
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="history.xlsx"'
+    
+    # Save the workbook to the response
+    wb.save(response)
+    
+    return response

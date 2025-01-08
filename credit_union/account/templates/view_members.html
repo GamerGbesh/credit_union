@@ -27,6 +27,7 @@
                 </select>
                 <button type="submit" class="btn btn-primary">Apply</button> 
             </form>
+            <a href="{% url 'download_contribution' %}" download>Export to excel</a>
             <table class="table">
                 <thead>
                     <tr>
@@ -57,9 +58,7 @@
                 </tfoot>
             </table>
             <div class="pagination"> {% if page_obj.paginator.num_pages != 1%}
-                <span id="page_num">
-                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-                </span>
+                
                 <div class="page">
                     {% if page_obj.has_previous %}
                     <a href="?page=1">First</a>

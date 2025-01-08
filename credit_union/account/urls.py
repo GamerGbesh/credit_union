@@ -15,6 +15,8 @@ urlpatterns = [
     path("member/<str:msisdn>/withdraw", views.withdraw, name='withdraw'),
     path("loans/<int:loan_id>", views.loan_details, name='loan_details'),
     path("loans/<int:loan_id>/pay", views.pay_loan, name='pay_loan'),
-
-  
+    path('download-contribution/', views.contributions_to_excel, name='download_contribution'),
+    path('download-requests/', views.requests_to_excel, name='download_requests'),
+    path('download-history/', views.history_to_excel, name='download_history'),
+    path('download-loans/', views.loans_to_excel, name='download_loans'),
 ]
