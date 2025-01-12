@@ -559,7 +559,7 @@ def pay_loan(request, loan_id):
 
 
 
-def prorating(amount:float, interest_rate:float, due_date:datetime.date|str, date_accepted:datetime.date|str):
+def prorating(amount, interest_rate, due_date, date_accepted):
     """Used to calculate the amount to be paid over the duration of the loan taken
 
     Args:
