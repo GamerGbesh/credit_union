@@ -474,7 +474,7 @@ def loan_details(request, loan_id):
 @login_required
 @transaction.atomic
 def input_loans(request):
-    # Make it so the person can add his own date when making the loan request
+   
     members = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"), last_name=F("kycdetails__last_name"))
     if request.method == "POST":
         name = request.POST.get("member")
@@ -519,10 +519,12 @@ def input_loans(request):
 def pay_loan(request, loan_id):
     loan = LoanRequest.objects.get(id=loan_id)
     approved = ApprovedLoan.objects.get(loan_request_id=loan)
+    # If there is payment to be made, this POST checks the validity of the payment and ensures it's paid
     if request.method == "POST":
         amount_paid = float(request.POST.get("amount"))
         date = request.POST.get("date")
         time_gotten = request.POST.get("time")
+        # Making sure the payment value is valid
         if amount_paid < 0:
             messages.error(request, "Amount paid cannot be negative")
             return redirect("pay_loan", loan_id=loan_id)
@@ -532,6 +534,7 @@ def pay_loan(request, loan_id):
             messages.info(request, "Amount of loan left to be paid: GHc" + str(approved.amount_left) + ", Amount being paid: GHc" + str(amount_paid))
 
             return redirect("pay_loan", loan_id=loan_id)
+        # Making sure all transactions are reflecting
         approved.amount_left = float(approved.amount_left) - amount_paid
         approved.save()
         if date and time_gotten:
@@ -556,9 +559,20 @@ def pay_loan(request, loan_id):
 
 
 
-def prorating(amount, interest_rate, due_date, date_accepted):
+def prorating(amount:float, interest_rate:float, due_date:datetime.date|str, date_accepted:datetime.date|str):
+    """Used to calculate the amount to be paid over the duration of the loan taken
+
+    Args:
+        amount (float): Amount of loan taken
+        interest_rate (float): Interest rate on the loan
+        due_date (datetime.date | str): The date the loan is due
+        date_accepted (datetime.date | str): The date the loan was accepted
+
+    Returns:
+        The total amount, interest, number of months for payment and date accepted
+    """
     amount = float(amount)
-    if isinstance(interest_rate, str):
+    if isinstance(due_date, str):
         due_year, due_month, due_day = due_date.split("-")
         due_date = datetime(int(due_year), int(due_month), int(due_day)).date()
     if isinstance(date_accepted, str):  
@@ -572,6 +586,15 @@ def prorating(amount, interest_rate, due_date, date_accepted):
 
 
 def contributions_to_excel(request):
+    
+    """This function converts the contributions of members into an excel sheet
+
+    Args:
+        request (HttpResponse): 
+
+    Returns:
+        HttpResponse: Downloadable excel sheet
+    """
     members = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"),
                                                                     last_name=F("kycdetails__last_name"),
                                                                     total_contribution=Coalesce(Sum("contribution__amount", distinct=True), 0, output_field=DecimalField()),
@@ -617,6 +640,15 @@ def contributions_to_excel(request):
     
 
 def requests_to_excel(request):
+    
+    """This function converts the loan requests into an excel sheet
+
+    Args:
+        request (HttpResponse): 
+
+    Returns:
+        HttpResponse: Downloadable excel sheet
+    """
     members = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"), 
                                       last_name=F("kycdetails__last_name"), 
                                       amount_requested=F("loanrequest__amount_requested"), 
@@ -656,6 +688,15 @@ def requests_to_excel(request):
     return response
 
 def loans_to_excel(request):
+    
+    """This function converts the loans into an excel sheet
+
+    Args:
+        request (HttpResponse): 
+
+    Returns:
+        HttpResponse: Downloadable excel sheet
+    """
     members = ApprovedLoan.objects.annotate(first_name=F("member_msisdn__kycdetails__first_name"), 
                                       last_name=F("member_msisdn__kycdetails__last_name"), 
                                       total_amount=F("amount_of_loan") + F("interest"),
@@ -695,6 +736,14 @@ def loans_to_excel(request):
     return response
 
 def history_to_excel(request):
+    """This function converts the history of transactions into an excel sheet
+
+    Args:
+        request (HttpResponse): 
+
+    Returns:
+        HttpResponse: Downloadable excel sheet
+    """
     members = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"), 
                                       last_name=F("kycdetails__last_name"), 
                                       transaction_type=F("transaction__transaction_type"),  
