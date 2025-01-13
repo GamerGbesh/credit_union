@@ -11,7 +11,7 @@
                 <div class="form-group">
                     <label for="member">Select Member:</label></br>
                     <input list="members" id="member" name="member" placeholder="Enter a members name" required>
-                        <!-- Options will be populated dynamically -->
+                        
                         <datalist id="members">
                             {% for member in members %}
                                 <option value="{{ member.first_name }} {{ member.last_name }}">{{ member.first_name }} {{ member.last_name }}</option>
@@ -31,11 +31,6 @@
                     <label for="date">Date:</label></br>
                     <input type="date" name="date" min="1900-01-01">
                     <p>If left blank, today's date will be used</p>
-                </div>
-                <div class="form-group">
-                    <label for="time">Time:</label></br>
-                    <input type="time" name="time">
-                    <p>If left blank, the current time will be used</p>
                 </div>
                 
                 <button type="submit" class="btn btn-primary">Submit Contribution</button>

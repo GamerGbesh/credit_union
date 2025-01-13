@@ -8,27 +8,6 @@
             <h1>Add New Member</h1>
             <form action="add" method="POST">
                 {% csrf_token %}
-                {% comment %} <div class="form-group">
-                    <label for="first_name">First Name*</label></br>
-                    <input type="text" id="first_name" name="first_name" required>
-                </div>
-                <div class="form-group">
-                    <label for="last_name">Last Name*</label></br>
-                    <input type="text" id="last_name" name="last_name" required>
-                </div>
-                <div class="form-group">
-                    <label for="email">Email</label></br>
-                    <input type="email" id="email" name="email">
-                </div>
-                <div class="form-group">
-                    <label for="phone">Phone*</label></br>
-                    <input type="tel" id="phone" name="phone" placeholder="eg. 0203334442"required>
-                </div>
-                <div class="form-group">
-                    <label for="dob">Date of Birth</label></br>
-                    <input type="date" value="2020-01-01" min="1900-01-01" max="2023-12-31" id="dob" name="dob">
-                </div>
-             {% endcomment %}
 
                 {{ form.as_p }}
                 <button type="submit" class="btn btn-primary">Add Member</button>

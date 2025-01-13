@@ -36,6 +36,7 @@ class MemberForm(forms.Form):
             full_number = f"{country_code}{msisdn}"
             cleaned_data["full_number"] = full_number
         dob = cleaned_data.get("dob")
+        
         if dob and dob > date.today():
             raise forms.ValidationError("Date of birth cannot be in the future.")
         first_name = cleaned_data.get("first_name")
@@ -44,6 +45,7 @@ class MemberForm(forms.Form):
         last_name = last_name.split(" ")
         if len(first_name) > 1 or len(last_name) > 1:
             raise forms.ValidationError("First and last name should be single words.")
+
         return cleaned_data
     
 

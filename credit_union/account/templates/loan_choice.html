@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block title %}Select Members{% endblock %}
+<body>
+    {% block content %}
+
+    <main>
+        <section class="view-members">
+            <h1>Choose Member!</h1>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Number</th>
+                        <th>Total Contribution</th>
+                        <th>Loan debt</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <form method="POST" action="{% url 'loan_choice' %}">
+                    {% csrf_token %}
+                <tbody>
+                    {% for member in page_obj %}
+                    <tr>
+                        <td>{{ member.first_name }} {{ member.last_name }}</td>
+                        <td>{{ member.msisdn }}</td>
+                        <td>{{ member.balance }}</td>
+                        <td>{{ member.loan_debt }}</td>
+                        <td> <button type=submit name="choice" value="{{ member.msisdn }}" class="btn btn-primary">Choose</button>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                
+            
+            </table>
+            <div class="form-group">
+                <label for="loan-amount">Loan Amount*</label></br>
+                <input type="number" id="loan-amount" name="loan_amount" step=".01" required value={{ loan_amount }}>
+            </div>
+            <div class="form-group">
+                <label for="loan-purpose">Loan Purpose*</label></br>
+                <input type="text" id="loan-purpose" name="loan_purpose" required value={{ loan_purpose }}>
+            </div>
+            <div class="form-group">
+                <label for="date">Date:</label></br>
+                <input type="date" name="date" min="1900-01-01" value={{ date }}>
+                <p>If left blank, today's date will be used</p>
+            </div>
+
+        </form>
+            <div class="pagination"> {% if page_obj.paginator.num_pages != 1%}
+                
+                <div class="page">
+                    {% if page_obj.has_previous %}
+                    <a href="?page=1">First</a>
+                    <a href="?page={{ page_obj.previous_page_number }}">Back</a>
+                {% endif %}
+        
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                        <strong id="highlight">{{ num }}</strong>
+                    {% else %}
+                        <a href="?page={{ num }}">{{ num }}</a>
+                    {% endif %}
+                {% endfor %}
+        
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}">Next</a>
+                    <a href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+                {% endif %}
+            {% endif %}
+                </div>
+            </div>
+            
+        </section>
+    </main>
+
+    {% endblock %}
+</body>
+</html>

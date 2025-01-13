@@ -22,6 +22,10 @@
             <button type="submit" class="btn btn-primary" value="withdraw" name="button">Withdraw Money</button>
         </form>
         {% endif %}
+        <form action="{% url 'delete' member.msisdn %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger" value="delete" name="del_button">Delete Member</button>
+        </form>
     </main>
 
     {% endblock %}

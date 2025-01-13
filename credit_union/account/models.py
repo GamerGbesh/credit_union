@@ -3,7 +3,7 @@ from django.db import models
 # Enum for member_status
 class MemberStatus(models.TextChoices):
     ACTIVE = 'ACTIVE', 'Active'
-    INACTIVE = 'INACTIVE', 'Inactive' #
+    INACTIVE = 'INACTIVE', 'Inactive'
 
 # Enum for loan_status
 class LoanStatus(models.TextChoices):
@@ -14,8 +14,8 @@ class LoanStatus(models.TextChoices):
 # Enum for status_enum
 class StatusEnum(models.TextChoices):
     ACTIVE = 'ACTIVE', 'Active'
-    PAID = 'PAID', 'Paid' #
-    OVERDUE = 'OVERDUE', 'Overdue' #
+    PAID = 'PAID', 'Paid'
+    OVERDUE = 'OVERDUE', 'Overdue'
 
 # Enum for transaction_enum
 class TransactionEnum(models.TextChoices):
@@ -58,13 +58,11 @@ class LoanRequest(models.Model):
     member_msisdn = models.ForeignKey(Member, on_delete=models.CASCADE)
     status = models.CharField(max_length=10, choices=LoanStatus.choices, default=LoanStatus.PENDING)
     request_date = models.DateField()
-    request_time = models.TimeField()
     amount_requested = models.DecimalField(max_digits=10, decimal_places=2)
     loan_purpose = models.CharField(max_length=200)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
-# Put the request_time and date on approved_loan
 class ApprovedLoan(models.Model):
     id = models.AutoField(primary_key=True)
     user_id = models.ForeignKey('auth.User', on_delete=models.CASCADE)
@@ -79,12 +77,7 @@ class ApprovedLoan(models.Model):
     created = models.DateTimeField()
     updated = models.DateTimeField(auto_now=True)
 
-# class MemberBalance(models.Model):
-#     id = models.AutoField(primary_key=True)
-#     member_msisdn = models.ForeignKey(Member, on_delete=models.CASCADE)
-#     balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-#     created = models.DateTimeField(auto_now_add=True)
-#     updated = models.DateTimeField(auto_now=True)
+
 
 class CreditUnionBalance(models.Model):
     id = models.AutoField(primary_key=True)
@@ -99,7 +92,7 @@ class Transaction(models.Model):
     transaction_type = models.CharField(max_length=20, choices=TransactionEnum.choices)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     date = models.DateField()
-    time = models.TimeField()
+    time = models.TimeField(auto_now_add=True)
     created = models.DateTimeField(auto_now_add=True)
     description = models.TextField(null=True, blank=True)
     

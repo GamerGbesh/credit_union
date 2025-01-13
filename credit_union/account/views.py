@@ -1,7 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect, HttpResponse
 from .models import *
 from django.db.models import F, Sum, DecimalField, DateTimeField, ExpressionWrapper
-from datetime import datetime, time
+from datetime import datetime
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib import messages
 from django.db.models.functions import Coalesce
@@ -23,7 +23,7 @@ def home(request):
                 total_contributions = 0
             if not total_loans:
                 total_loans = 0
-            return render(request, "home.html", {"current_year": 2024, "union": union, 
+            return render(request, "home.html", {"union": union, 
                                                 "total_contribution": total_contributions, 
                                                 "total_loan_debt": total_loans})
         else:
@@ -82,7 +82,7 @@ def add_member(request):
     else:
         form = MemberForm()
     union = CreditUnionBalance.objects.filter(user_id=request.user).first()
-    return render(request, "add_member.html", {"current_year": 2024, "union": union, "form": form})
+    return render(request, "add_member.html", {"union": union, "form": form})
 
 
 
@@ -114,7 +114,7 @@ def view_members(request):
         page_obj = paginator.page(paginator.num_pages)
   
     union = CreditUnionBalance.objects.filter(user_id=request.user).first()
-    return render(request, "view_members.html", {"current_year": 2024, "page_obj": page_obj, 
+    return render(request, "view_members.html", {"page_obj": page_obj, 
                                                  "sort":sort,
                                                  "order":order,
                                                  "filter":filter,
@@ -132,7 +132,7 @@ def member_info(request, msisdn):
                                                                     dob=F("kycdetails__dob")
                                                                     ).get(msisdn=msisdn)
     union = CreditUnionBalance.objects.filter(user_id=request.user).first()
-    return render(request, "member.html", {"current_year": 2024, "member": member, "union": union})
+    return render(request, "member.html", {"member": member, "union": union})
 
 
 @login_required
@@ -160,7 +160,7 @@ def edit_member(request, msisdn):
         kyc.save()        
         return redirect("members", msisdn=new_msisdn)
     union = CreditUnionBalance.objects.filter(user_id=request.user).first()
-    return render(request, "edit_member.html", {"current_year": 2024, "member": member, "union": union})
+    return render(request, "edit_member.html", {"member": member, "union": union})
 
 
 @login_required
@@ -177,19 +177,12 @@ def withdraw(request, msisdn):
                                      ).get(msisdn=msisdn)
     if request.method == "POST":
         date = request.POST.get("date")
-        time_gotten = request.POST.get("time")
         if member.status == MemberStatus.INACTIVE:
             messages.error(request, f"{member.first_name} {member.last_name} is not an active member")
             return redirect("home")
-        if date and time_gotten:
-            pass
-        elif date:
-            time_gotten = datetime.now().time()
-        elif time_gotten:
-            date = datetime.now().date()
-        else:
-            time_gotten = datetime.now().time()
-            date = datetime.now().date()
+        if not date:
+                date = datetime.now().date()
+
         credit_union_balance = CreditUnionBalance.objects.filter(user_id=request.user).first()
         if float(credit_union_balance.amount) < float(member.final_balance):
             messages.error(request, "The credit union balance is less than the total savings of the member cannot withdraw")
@@ -201,30 +194,30 @@ def withdraw(request, msisdn):
         credit_union_balance.amount = float(credit_union_balance.amount) - float(member.final_balance)
         
         credit_union_balance.save()
-        if member.loan_debt > 0:
-            contributions = Contribution.objects.filter(member_msisdn=member)
-            for contribution in contributions:
+        contributions = Contribution.objects.filter(member_msisdn=member)
+        for contribution in contributions:
                 contribution.amount = 0
                 contribution.interest = 0
                 contribution.save()
-            loans = ApprovedLoan.objects.filter(member_msisdn=member, status=StatusEnum.ACTIVE)
+        if member.loan_debt > 0:           
+            loans = ApprovedLoan.objects.filter(member_msisdn=member)
             for loan in loans:
                 loan.status = StatusEnum.PAID
                 loan.amount_left = 0
                 loan.save()
-            Transaction.objects.create(member_msisdn=member, date=date, time=time_gotten, 
+            Transaction.objects.create(member_msisdn=member, date=date, 
                                    transaction_type=TransactionEnum.LOAN_PAYMENT, 
                                    amount=member.loan_debt, 
                                    description="Payment of all loan debt")        
-        Transaction.objects.create(member_msisdn=member, date=date, time=time_gotten, 
+        Transaction.objects.create(member_msisdn=member, date=date, 
                                    transaction_type=TransactionEnum.SAVINGS_WITHDRAWAL, 
                                    amount=member.final_balance, 
                                    description="Withdrawal of total savings")
         member.status = MemberStatus.INACTIVE
         member.save()
-        return redirect("home")
+        return redirect("members", msisdn)
     union = CreditUnionBalance.objects.filter(user_id=request.user).first()
-    return render(request, "withdraw.html", {"current_year": 2024, "member": member, "union": union})
+    return render(request, "withdraw.html", {"member": member, "union": union})
 
 # Contributions
 @login_required
@@ -236,41 +229,99 @@ def make_contribution(request):
         name = request.POST.get("member")
         amount = float(request.POST.get("amount"))
         date = request.POST.get("date")
-        time_gotten = request.POST.get("time")
         interest = float(request.POST.get("interest"))/100
         interest = interest * amount
         if amount < 0:
             messages.error(request, "Amount cannot be negative")
             return redirect("make_contribution")
         one = name.split(" ")
+        
+        if not date:
+                date = str(datetime.now().date())
+
         try:
             member = Member.objects.filter(user_id=request.user).get(kycdetails__first_name=one[0], kycdetails__last_name=one[1])
         except Member.DoesNotExist:
             messages.error(request, "Member not found")
             return redirect("make_contribution")
+        except Member.MultipleObjectsReturned:
+            messages.info(request, "Multiple members have that name, select which of them!")
+            members = Member.objects.filter(user_id=request.user, kycdetails__first_name=one[0], kycdetails__last_name=one[1]).annotate(
+                first_name=F("kycdetails__first_name"),
+                last_name=F("kycdetails__last_name"),
+                balance=ExpressionWrapper(Coalesce(Sum("contribution__amount", distinct=True), 0), DecimalField()),
+                loan_debt=ExpressionWrapper(Coalesce(Sum("approvedloan__amount_left", distinct=True), 0), DecimalField()),
+            )
+            paginator = Paginator(members, 10)
+            page_number = request.GET.get("page")
+
+            try:
+                page_obj = paginator.get_page(page_number)
+            except PageNotAnInteger:
+                page_obj = paginator.page(1)
+            except EmptyPage:
+                page_obj = paginator.page(paginator.num_pages)
+            union = CreditUnionBalance.objects.filter(user_id=request.user).first()
+            return render(request, "choice.html", {"page_obj": page_obj, "union": union, "amount":amount, "interest":interest, "date":date})
+        
         Contribution.objects.create(member_msisdn=member, amount=amount, interest=interest, user_id=request.user)
-        if date and time_gotten:
-            pass
-        elif date:
-            time_gotten = datetime.now().time()
-        elif time_gotten:
-            date = datetime.now().date()
-        else:
-            time_gotten = datetime.now().time()
-            date = datetime.now().date()
         Transaction.objects.create(member_msisdn=member, 
                                        transaction_type=TransactionEnum.DEPOSIT, 
                                        amount=amount, 
                                        description="Contribution",
-                                       date=date,
-                                       time=time_gotten)
+                                       date=date)
         union = CreditUnionBalance.objects.filter(user_id=request.user).first()
         union.amount = float(union.amount) + amount
         union.save()
         messages.success(request, "Contribution made successfully")
         return redirect("view_members")
     union = CreditUnionBalance.objects.filter(user_id=request.user).first()
-    return render(request, "make_contribution.html", {"current_year": 2024, "members": members, "union": union})
+    return render(request, "make_contribution.html", {"members": members, "union": union})
+
+
+def choice(request):
+    if request.method == "POST":
+        choice = request.POST.get("choice")
+        member = Member.objects.filter(user_id=request.user).get(msisdn=choice)
+        amount = float(request.POST.get("amount"))
+        interest = float(request.POST.get("interest"))
+        date = request.POST.get("date")
+        
+        Contribution.objects.create(member_msisdn=member, amount=amount, interest=interest, user_id=request.user)
+        Transaction.objects.create(member_msisdn=member, 
+                                       transaction_type=TransactionEnum.DEPOSIT, 
+                                       amount=amount, 
+                                       description="Contribution",
+                                       date=date)
+        union = CreditUnionBalance.objects.filter(user_id=request.user).first()
+        union.amount = float(union.amount) + amount
+        union.save()
+        messages.success(request, "Contribution made successfully")
+        return redirect("view_members")
+
+
+@login_required
+def delete(request, msisdn):
+    member = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"),
+                                     last_name=F("kycdetails__last_name"),
+                                     balance=ExpressionWrapper(Coalesce(Sum("contribution__amount", distinct=True), 0), DecimalField()),
+                                     loan_debt=ExpressionWrapper(Coalesce(Sum("approvedloan__amount_left", distinct=True), 0), DecimalField()),
+                                     interest=ExpressionWrapper(Coalesce(Sum("contribution__interest", distinct=True), 0), DecimalField()),
+                                     final_balance=ExpressionWrapper(Coalesce(Sum("contribution__amount", distinct=True), 0) + 
+                                                   Coalesce(Sum("contribution__interest", distinct=True), 0) - 
+                                                   Coalesce(Sum("approvedloan__amount_left", distinct=True), 0), DecimalField())
+                                     ).get(msisdn=msisdn)
+    if request.method == "POST":
+        if member.balance == 0 and member.loan_debt == 0 and member.final_balance == 0:
+            member.delete()
+            messages.success(request, f"{member.first_name} {member.last_name} deleted successfully!")
+            return redirect("home")
+        else:
+            messages.error(request, "Member has active contributions or loans to pay! Member cannot be deleted!")
+            messages.info(request, "To delete first withdraw money for the member!")
+            return redirect("members", msisdn)
+    union = CreditUnionBalance.objects.filter(user_id=request.user).first()
+    return render(request, "delete.html", {"member": member, "union": union})
 
 
 
@@ -280,7 +331,7 @@ def make_contribution(request):
 @login_required
 def view_history(request):
     #Create a filter and sort the transactions
-    sort = request.GET.get("sort", "transaction_created")
+    sort = request.GET.get("sort", "transaction_date")
     order = request.GET.get("order", "-")
     sorted = order + sort
     filter = request.GET.get("filter", "all")
@@ -289,8 +340,8 @@ def view_history(request):
                                       transaction_type=F("transaction__transaction_type"),  
                                       description=F("transaction__description"), 
                                       amount=F("transaction__amount"),
-                                      transaction_created=ExpressionWrapper(F("transaction__date") + F("transaction__time"), output_field=DateTimeField()),
-                                      date = F("transaction__date")).filter(amount__gt=0).order_by(sorted)
+                                      date=F("transaction__date"),
+                                      transaction_date = ExpressionWrapper(F("transaction__date") + F("transaction__time"), DateTimeField())).filter(amount__gt=0).order_by(sorted)
 
     if filter != "all":
         members = members.filter(transaction_type=filter)
@@ -304,7 +355,7 @@ def view_history(request):
     except EmptyPage:
         page_obj = paginator.page(paginator.num_pages)
     union = CreditUnionBalance.objects.filter(user_id=request.user).first()
-    return render(request, "history.html", {"current_year": 2024, "page_obj": page_obj,
+    return render(request, "history.html", {"page_obj": page_obj,
                                             "sort":sort,
                                             "order":order,
                                             "filter":filter,
@@ -339,7 +390,7 @@ def loan_request(request):
     except EmptyPage:
         page_obj = paginator.page(paginator.num_pages)
     union = CreditUnionBalance.objects.filter(user_id=request.user).first()
-    return render(request, "loans_requests.html", {"current_year": 2024, "page_obj": page_obj,
+    return render(request, "loans_requests.html", {"page_obj": page_obj,
                                           "sort":sort,
                                           "order":order,
                                           "filter":filter,
@@ -370,7 +421,7 @@ def approved_loans(request):
     except EmptyPage:
         page_obj = paginator.page(paginator.num_pages)
     union = CreditUnionBalance.objects.filter(user_id=request.user).first()
-    return render(request, "loans.html", {"current_year": 2024, "page_obj": page_obj,
+    return render(request, "loans.html", {"page_obj": page_obj,
                                           "sort":sort,
                                           "order":order,
                                           "filter":filter,
@@ -418,7 +469,6 @@ def loan_details(request, loan_id):
             loan.status = LoanStatus.APPROVED
             loan.save()
             date = request.POST.get("date")
-            time_gotten = request.POST.get("time")
             interest_rate = float(request.POST.get("interest"))/100
             if interest_rate < 0:
                 messages.error(request, "Interest rate cannot be negative")
@@ -429,17 +479,8 @@ def loan_details(request, loan_id):
 
             
             member = Member.objects.filter(user_id=request.user).get(msisdn=loan.member_msisdn.msisdn)
-            if date and time_gotten:
-                time_hour, time_minute = time_gotten.split(":")
-                time_gotten = time(int(time_hour), int(time_minute))
-                pass
-            elif date:
-                time_gotten = datetime.now().time()
-            elif time_gotten:
+            if not date:
                 date = datetime.now().date()
-            else:
-                date = datetime.now().date()
-                time_gotten = datetime.now().time()
             
             amount_to_deduct, interest, months, date_accepted = prorating(loan.amount_requested, interest_rate, due_date, date)
             
@@ -459,8 +500,7 @@ def loan_details(request, loan_id):
                                        transaction_type=TransactionEnum.LOAN_WITHDRAWAL, 
                                        amount=loan.amount_requested, 
                                        description=loan.loan_description,
-                                       date=date,
-                                       time=time_gotten)
+                                       date=date)
             approved = ApprovedLoan.objects.filter(loan_request_id=loan)
             
             
@@ -469,7 +509,7 @@ def loan_details(request, loan_id):
             loan.save()
         return redirect("loan_details", loan_id=loan_id)
     union = CreditUnionBalance.objects.filter(user_id=request.user).first()
-    return render(request, "loan_details.html", {"current_year": 2024, "loan": loan, "approved": approved, "due_date": due_date, "union": union})
+    return render(request, "loan_details.html", {"loan": loan, "approved": approved, "due_date": due_date, "union": union})
 
 @login_required
 @transaction.atomic
@@ -484,7 +524,8 @@ def input_loans(request):
             messages.error(request, "Please enter the first name and last name of the member")
             return redirect("input_loans")
         date = request.POST.get("date")
-        time_gotten = request.POST.get("time")
+        if not date:
+                date = str( datetime.now().date())
         loan_purpose = request.POST.get("loan_purpose")
         if amount < 0:
             messages.error(request, "Loan amount cannot be negative")
@@ -494,24 +535,51 @@ def input_loans(request):
         except Member.DoesNotExist:
             messages.error(request, "Member not found")
             return redirect("input_loans")
-        if date and time_gotten:
-            pass
-        elif date:
-            time_gotten = datetime.now().time()
-        elif time_gotten:
-            date = datetime.now().date()
-        else:
-            time_gotten = datetime.now().time()
-            date = datetime.now().date()
+        except Member.MultipleObjectsReturned:
+            messages.info(request, "Multiple members have that name, select which of them!")
+            members = Member.objects.filter(user_id=request.user, kycdetails__first_name=one[0], kycdetails__last_name=one[1]).annotate(
+                first_name=F("kycdetails__first_name"),
+                last_name=F("kycdetails__last_name"),
+                balance=ExpressionWrapper(Coalesce(Sum("contribution__amount", distinct=True), 0), DecimalField()),
+                loan_debt=ExpressionWrapper(Coalesce(Sum("approvedloan__amount_left", distinct=True), 0), DecimalField()),
+            )
+            paginator = Paginator(members, 10)
+            page_number = request.GET.get("page")
+
+            try:
+                page_obj = paginator.get_page(page_number)
+            except PageNotAnInteger:
+                page_obj = paginator.page(1)
+            except EmptyPage:
+                page_obj = paginator.page(paginator.num_pages)
+            union = CreditUnionBalance.objects.filter(user_id=request.user).first()
+            return render(request, "loan_choice.html", {"page_obj": page_obj, "union": union, "amount":amount, "loan_amount":amount, "loan_purpose":loan_purpose, "date":date})        
+
         LoanRequest.objects.create(member_msisdn=member, 
                                    amount_requested=amount, 
                                    loan_purpose=loan_purpose, 
                                    request_date=date, 
-                                   request_time=time_gotten)
+                                   )
 
         return redirect("loan_request")
     union = CreditUnionBalance.objects.filter(user_id=request.user).first()
-    return render(request, "input_loans.html", {"current_year": 2024, "members": members, "union": union})
+    return render(request, "input_loans.html", {"members": members, "union": union})
+
+@login_required
+def loan_choice(request):
+    if request.method == "POST":
+        choice = request.POST.get("choice")
+        member = Member.objects.filter(user_id=request.user).get(msisdn=choice)
+        amount = float(request.POST.get("loan_amount"))
+        loan_purpose = request.POST.get("loan_purpose")
+        date = request.POST.get("date")
+        
+        LoanRequest.objects.create(member_msisdn=member, 
+                                   amount_requested=amount, 
+                                   loan_purpose=loan_purpose, 
+                                   request_date=date, 
+                                   )
+        return redirect("loan_request")
 
 
 @login_required
@@ -523,7 +591,6 @@ def pay_loan(request, loan_id):
     if request.method == "POST":
         amount_paid = float(request.POST.get("amount"))
         date = request.POST.get("date")
-        time_gotten = request.POST.get("time")
         # Making sure the payment value is valid
         if amount_paid < 0:
             messages.error(request, "Amount paid cannot be negative")
@@ -537,25 +604,18 @@ def pay_loan(request, loan_id):
         # Making sure all transactions are reflecting
         approved.amount_left = float(approved.amount_left) - amount_paid
         approved.save()
-        if date and time_gotten:
-            pass
-        elif date:
-            time_gotten = datetime.now().time()
-        elif time_gotten:
-            date = datetime.now().date()
-        else:
-            time_gotten = datetime.now().time()
-            date = datetime.now().date()
+        if not date:
+                date = datetime.now().date()
         Transaction.objects.create(member_msisdn=loan.member_msisdn, 
                                        transaction_type=TransactionEnum.LOAN_PAYMENT, 
                                        amount=amount_paid, description="Loan payment", 
-                                       date=date, time=time_gotten)
+                                       date=date)
         credit_union_balance = CreditUnionBalance.objects.filter(user_id=request.user).first()
         credit_union_balance.amount = float(credit_union_balance.amount) + amount_paid
         credit_union_balance.save()
         return redirect("loan_details", loan_id=loan_id)
     union = CreditUnionBalance.objects.filter(user_id=request.user).first()
-    return render(request, "pay_loan.html", {"current_year": 2024, "loan": loan, "union": union})
+    return render(request, "pay_loan.html", {"loan": loan, "union": union})
 
 
 
@@ -749,7 +809,6 @@ def history_to_excel(request):
                                       transaction_type=F("transaction__transaction_type"),  
                                       description=F("transaction__description"), 
                                       amount=F("transaction__amount"),
-                                      transaction_created=ExpressionWrapper(F("transaction__date") + F("transaction__time"), output_field=DateTimeField()),
                                       date = F("transaction__date")).filter(amount__gt=0)
     wb = openpyxl.Workbook()
     ws = wb.active

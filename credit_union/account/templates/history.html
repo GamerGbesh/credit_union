@@ -10,7 +10,7 @@
                 <label for="sort">Sort by</label>
                 <select name="sort" class="sort">
                   <option value="first_name" {% if sort == 'first_name' %}selected{% endif %}>Name</option>
-                  <option value="transaction_created" {% if sort == 'transaction_created' %}selected{% endif %}>Date</option>
+                  <option value="transaction_date" {% if sort == 'transaction_date' %}selected{% endif %}>Date</option>
                   <option value="amount"{% if sort == 'amount' %}selected{% endif %}>Amount</option>
                 </select>
                 <select name="order" class="sort">
@@ -44,7 +44,7 @@
                         <td>{{ member.first_name }} {{ member.last_name }}</td>
                         <td>{{ member.amount }}</td>
                         <td>{{ member.transaction_type }}</td>
-                        <td>{{ member.transaction_created }}</td>
+                        <td>{{ member.date }}</td>
                         <td>{{ member.description }}</td>
                     </tr>
                     {% endfor %}
