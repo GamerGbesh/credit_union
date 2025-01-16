@@ -818,15 +818,3 @@ def history_to_excel(request):
     wb.save(response)
     
     return response
-
-
-def integrate(request):
-    info = KYCDetails.objects.all()
-    for member in info:
-        first_name = member.surname
-        last_name = member.other_names
-        full_name = f"{first_name} {last_name}"
-        member.name = full_name
-        member.save()
-
-    return HttpResponse("<h1>Done</h1>")
