@@ -9,7 +9,7 @@
             <form action="history" class="sort_head">
                 <label for="sort">Sort by</label>
                 <select name="sort" class="sort">
-                  <option value="first_name" {% if sort == 'first_name' %}selected{% endif %}>Name</option>
+                  <option value="name" {% if sort == 'name' %}selected{% endif %}>Name</option>
                   <option value="transaction_date" {% if sort == 'transaction_date' %}selected{% endif %}>Date</option>
                   <option value="amount"{% if sort == 'amount' %}selected{% endif %}>Amount</option>
                 </select>
@@ -41,7 +41,7 @@
                 <tbody>
                     {% for member in page_obj %}
                     <tr>
-                        <td>{{ member.first_name }} {{ member.last_name }}</td>
+                        <td>{{ member.name }}</td>
                         <td>{{ member.amount }}</td>
                         <td>{{ member.transaction_type }}</td>
                         <td>{{ member.date }}</td>

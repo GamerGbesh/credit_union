@@ -9,16 +9,16 @@
             <form action="{% url 'edit_member' member.msisdn %}" method="POST">
                 {% csrf_token %}
                 <div class="form-group">
-                    <label for="first_name">First Name:</label>
-                    <input type="text" id="first_name" name="first_name" value={{ member.first_name}} required>
+                    <label for="surname">Surname:</label>
+                    <input type="text" id="first_name" name="surname" value={{ member.surname }} required>
                 </div>
                 <div class="form-group">
-                    <label for="last_name">Last Name:</label>
-                    <input type="text" id="last_name" name="last_name" value={{ member.last_name }} required>    
+                    <label for="other_name">Other Names:</label>
+                    <input type="text" id="last_name" name="other_names" value={{ member.other_names}} required>    
                 </div>
                 <div class="form-group">
                     <label for="email">Email:</label>
-                    <input type="email" id="email" name="email" value={{ member.email }}>
+                    <input type="email" id="email" name="email" value={% if member.email %}{{ member.email }}{% endif %}>
                 </div>
                 <div class="form-group">
                     <label for="phone">Phone:</label>

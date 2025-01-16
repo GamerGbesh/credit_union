@@ -21,12 +21,12 @@ class MemberForm(forms.Form):
                      ("+299", "Greenland"),
                      ("+228", "Togo")]
     
-    first_name = forms.CharField(max_length=50, label="First name", required=True)
-    last_name = forms.CharField(max_length=50, label="Last name", required=True)
+    surname = forms.CharField(max_length=50, label="Surname", required=True)
+    other_names = forms.CharField(max_length=50, label="Other names", required=True)
     email = forms.EmailField(label="Email", required=False)
     code = forms.ChoiceField(choices=COUNTRY_CODES, label="Country code", required=True)
     msisdn = forms.RegexField(regex=r"^\d{9}$", required=True, label="Phone number")
-    dob = forms.DateField(label="Date of birth", required=False, error_messages={"invalid": "Enter a valid date in MM/DD/YYYY format."})
+    dob = forms.DateField(label="Date of birth(MM/DD/YYYY)", required=False, error_messages={"invalid": "Enter a valid date in MM/DD/YYYY format."})
 
     def clean(self):
         cleaned_data = super().clean()
@@ -39,12 +39,10 @@ class MemberForm(forms.Form):
         
         if dob and dob > date.today():
             raise forms.ValidationError("Date of birth cannot be in the future.")
-        first_name = cleaned_data.get("first_name")
-        last_name = cleaned_data.get("last_name")
-        first_name = first_name.split(" ")
-        last_name = last_name.split(" ")
-        if len(first_name) > 1 or len(last_name) > 1:
-            raise forms.ValidationError("First and last name should be single words.")
+        surname = cleaned_data.get("surname")
+        other_names = cleaned_data.get("other_names")
+        full_name = f"{surname} {other_names}"
+        cleaned_data["full_name"] = full_name 
 
         return cleaned_data
     

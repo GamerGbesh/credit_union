@@ -9,7 +9,7 @@
             <form action="{% url 'loan_request' %}" class="sort_head">
                 <label for="sort">Sort by</label>
                 <select name="sort" class="sort">
-                  <option value="first_name" {% if sort == 'first_name' %}selected{% endif %}>Name</option>
+                  <option value="name" {% if sort == 'name' %}selected{% endif %}>Name</option>
                   <option value="loan_created" {% if sort == 'loan_created' %}selected{% endif %}>Date created</option>
                   <option value="amount_requested"{% if sort == 'amount_requested' %}selected{% endif %}>Amount requested</option>
                 </select>
@@ -40,7 +40,7 @@
                 <tbody>
                     {% for member in page_obj %}
                     <tr>
-                        <td>{{ member.first_name }} {{ member.last_name }}</td>
+                        <td>{{ member.name }}</td>
                         <td >{{ member.amount_requested }}</td>
                         <td>{{ member.date }}</td>
                         <td>{{ member.loan_status }}</td>

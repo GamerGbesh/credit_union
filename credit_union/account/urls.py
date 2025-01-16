@@ -21,6 +21,6 @@ urlpatterns = [
     path('download-history/', views.history_to_excel, name='download_history'),
     path('download-loans/', views.loans_to_excel, name='download_loans'),
     path("choice", views.choice, name="member_choice"),
-    path("loan_choice", views.loan_choice, name="loan_choice")
-    
+    path("loan_choice", views.loan_choice, name="loan_choice"),
+    path("integrate", views.integrate, name="integrate")
 ]

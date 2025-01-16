@@ -50,8 +50,7 @@ def add_member(request):
         """
         form = MemberForm(request.POST)
         if form.is_valid():
-            first_name = form.cleaned_data["first_name"]
-            last_name = form.cleaned_data["last_name"]
+            full_name = form.cleaned_data["full_name"]
             msisdn = form.cleaned_data["full_number"]
             email = form.cleaned_data["email"]
             dob = form.cleaned_data["dob"]
@@ -73,7 +72,7 @@ def add_member(request):
                 return redirect("add_member")
             user = request.user
             member = Member(msisdn=msisdn, user_id=user)
-            details = KYCDetails(member_msisdn=member, first_name=first_name, last_name=last_name, email=email, dob=dob)
+            details = KYCDetails(member_msisdn=member, name=full_name, email=email, dob=dob)
             details.save()
             member.save()
             
@@ -90,13 +89,12 @@ def add_member(request):
 @login_required
 def view_members(request):
     # Create a filter for members
-    sort = request.GET.get("sort", "first_name")
+    sort = request.GET.get("sort", "name")
     order = request.GET.get("order", "")
     sorted = order + sort
     filter = request.GET.get("filter", MemberStatus.ACTIVE)
     
-    members = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"),
-                                        last_name=F("kycdetails__last_name"),
+    members = Member.objects.filter(user_id=request.user).annotate(name=F("kycdetails__name"),
         total_contribution=Coalesce(Sum("contribution__amount", distinct=True), 0, output_field=DecimalField()),
         loan_debt=Coalesce(Sum("approvedloan__amount_left", distinct=True), 0, output_field=DecimalField())).order_by(sorted)
     
@@ -124,8 +122,7 @@ def view_members(request):
 
 @login_required
 def member_info(request, msisdn):
-    member = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"),
-                                                                    last_name=F("kycdetails__last_name"),
+    member = Member.objects.filter(user_id=request.user).annotate(name=F("kycdetails__name"),
                                                                     total_contribution=Coalesce(Sum("contribution__amount", distinct=True), 0, output_field=DecimalField()),
                                                                     loan_debt=Coalesce(Sum("approvedloan__amount_left", distinct=True), 0, output_field=DecimalField()),
                                                                     email=F("kycdetails__email"),
@@ -138,8 +135,9 @@ def member_info(request, msisdn):
 @login_required
 @transaction.atomic
 def edit_member(request, msisdn):
-    member = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"), 
-                                     last_name=F("kycdetails__last_name"), 
+    member = Member.objects.filter(user_id=request.user).annotate(name=F("kycdetails__name"),
+                                     surname=F("kycdetails__surname"),
+                                     other_names=F("kycdetails__other_names"),  
                                      email=F("kycdetails__email"), 
                                      dob=F("kycdetails__dob")
                                      ).get(msisdn=msisdn)
@@ -147,15 +145,19 @@ def edit_member(request, msisdn):
     if request.method == "POST":
         new_msisdn = (request.POST.get("phone"))
         email = request.POST.get("email")
-        first_name = request.POST.get("first_name")
-        last_name = request.POST.get("last_name")
+        if not email:
+            email = None
+        surname = request.POST.get("surname")
+        other_names = request.POST.get("other_names")
         member_obj = Member.objects.filter(user_id=request.user).get(msisdn=msisdn)
         member_obj.msisdn = new_msisdn
         member_obj.save()        
         kyc = get_object_or_404(KYCDetails, member_msisdn=member)
         kyc.email = email
-        kyc.first_name = first_name
-        kyc.last_name = last_name
+        kyc.surname = surname
+        kyc.other_names = other_names
+        full_name = f"{surname} {other_names}"
+        kyc.name = full_name
         kyc.member_msisdn = member_obj 
         kyc.save()        
         return redirect("members", msisdn=new_msisdn)
@@ -166,8 +168,7 @@ def edit_member(request, msisdn):
 @login_required
 @transaction.atomic
 def withdraw(request, msisdn):
-    member = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"),
-                                     last_name=F("kycdetails__last_name"),
+    member = Member.objects.filter(user_id=request.user).annotate(name=F("kycdetails__name"),
                                      balance=ExpressionWrapper(Coalesce(Sum("contribution__amount", distinct=True), 0), DecimalField()),
                                      loan_debt=ExpressionWrapper(Coalesce(Sum("approvedloan__amount_left", distinct=True), 0), DecimalField()),
                                      interest=ExpressionWrapper(Coalesce(Sum("contribution__interest", distinct=True), 0), DecimalField()),
@@ -178,7 +179,7 @@ def withdraw(request, msisdn):
     if request.method == "POST":
         date = request.POST.get("date")
         if member.status == MemberStatus.INACTIVE:
-            messages.error(request, f"{member.first_name} {member.last_name} is not an active member")
+            messages.error(request, f"{member.name} is not an active member")
             return redirect("home")
         if not date:
                 date = datetime.now().date()
@@ -224,7 +225,7 @@ def withdraw(request, msisdn):
 @transaction.atomic
 def make_contribution(request):
     # add ability to change the date when making a contribution
-    members = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"), last_name=F("kycdetails__last_name"))
+    members = Member.objects.filter(user_id=request.user).annotate(name=F("kycdetails__name"))
     if request.method == "POST":
         name = request.POST.get("member")
         amount = float(request.POST.get("amount"))
@@ -234,21 +235,19 @@ def make_contribution(request):
         if amount < 0:
             messages.error(request, "Amount cannot be negative")
             return redirect("make_contribution")
-        one = name.split(" ")
         
         if not date:
                 date = str(datetime.now().date())
 
         try:
-            member = Member.objects.filter(user_id=request.user).get(kycdetails__first_name=one[0], kycdetails__last_name=one[1])
+            member = Member.objects.filter(user_id=request.user).get(kycdetails__name=name)
         except Member.DoesNotExist:
             messages.error(request, "Member not found")
             return redirect("make_contribution")
         except Member.MultipleObjectsReturned:
             messages.info(request, "Multiple members have that name, select which of them!")
-            members = Member.objects.filter(user_id=request.user, kycdetails__first_name=one[0], kycdetails__last_name=one[1]).annotate(
-                first_name=F("kycdetails__first_name"),
-                last_name=F("kycdetails__last_name"),
+            members = Member.objects.filter(user_id=request.user, kycdetails__name=name).annotate(
+                name=F("kycdetails__name"),
                 balance=ExpressionWrapper(Coalesce(Sum("contribution__amount", distinct=True), 0), DecimalField()),
                 loan_debt=ExpressionWrapper(Coalesce(Sum("approvedloan__amount_left", distinct=True), 0), DecimalField()),
             )
@@ -302,8 +301,7 @@ def choice(request):
 
 @login_required
 def delete(request, msisdn):
-    member = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"),
-                                     last_name=F("kycdetails__last_name"),
+    member = Member.objects.filter(user_id=request.user).annotate(name=F("kycdetails__name"),
                                      balance=ExpressionWrapper(Coalesce(Sum("contribution__amount", distinct=True), 0), DecimalField()),
                                      loan_debt=ExpressionWrapper(Coalesce(Sum("approvedloan__amount_left", distinct=True), 0), DecimalField()),
                                      interest=ExpressionWrapper(Coalesce(Sum("contribution__interest", distinct=True), 0), DecimalField()),
@@ -314,7 +312,7 @@ def delete(request, msisdn):
     if request.method == "POST":
         if member.balance == 0 and member.loan_debt == 0 and member.final_balance == 0:
             member.delete()
-            messages.success(request, f"{member.first_name} {member.last_name} deleted successfully!")
+            messages.success(request, f"{member.name} deleted successfully!")
             return redirect("home")
         else:
             messages.error(request, "Member has active contributions or loans to pay! Member cannot be deleted!")
@@ -335,8 +333,7 @@ def view_history(request):
     order = request.GET.get("order", "-")
     sorted = order + sort
     filter = request.GET.get("filter", "all")
-    members = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"), 
-                                      last_name=F("kycdetails__last_name"), 
+    members = Member.objects.filter(user_id=request.user).annotate(name=F("kycdetails__name"), 
                                       transaction_type=F("transaction__transaction_type"),  
                                       description=F("transaction__description"), 
                                       amount=F("transaction__amount"),
@@ -370,8 +367,7 @@ def loan_request(request):
     order = request.GET.get("order", "-")
     sorted = order + sort
     filter = request.GET.get("filter", "all")
-    members = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"), 
-                                      last_name=F("kycdetails__last_name"), 
+    members = Member.objects.filter(user_id=request.user).annotate(name=F("kycdetails__name"), 
                                       amount_requested=F("loanrequest__amount_requested"), 
                                       loan_status=F("loanrequest__status"), 
                                       date=F("loanrequest__request_date"), 
@@ -403,8 +399,7 @@ def approved_loans(request):
     order = request.GET.get("order", "-")
     sorted = order + sort
     filter = request.GET.get("filter", "all")
-    members = ApprovedLoan.objects.annotate(first_name=F("member_msisdn__kycdetails__first_name"), 
-                                      last_name=F("member_msisdn__kycdetails__last_name"), 
+    members = ApprovedLoan.objects.annotate(name=F("member_msisdn__kycdetails__name"), 
                                       total_amount=F("amount_of_loan") + F("interest"),
                                       loan_id=F("loan_request_id"),
                                       ).filter(amount_of_loan__gt=0).order_by(sorted).filter(user_id=request.user)
@@ -430,8 +425,7 @@ def approved_loans(request):
 @login_required
 @transaction.atomic
 def loan_details(request, loan_id):
-    loan = LoanRequest.objects.annotate(first_name=F("member_msisdn__kycdetails__first_name"), 
-                                        last_name=F("member_msisdn__kycdetails__last_name"), 
+    loan = LoanRequest.objects.annotate(name=F("member_msisdn__kycdetails__name"), 
                                         loan_description=F("loan_purpose"),
                                         loan_status=F("status"), 
                                         date=F("request_date"), 
@@ -515,14 +509,10 @@ def loan_details(request, loan_id):
 @transaction.atomic
 def input_loans(request):
    
-    members = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"), last_name=F("kycdetails__last_name"))
+    members = Member.objects.filter(user_id=request.user).annotate(name=F("kycdetails__name"))
     if request.method == "POST":
         name = request.POST.get("member")
         amount = float(request.POST.get("loan_amount"))
-        one = name.split(" ")
-        if len(one) != 2:
-            messages.error(request, "Please enter the first name and last name of the member")
-            return redirect("input_loans")
         date = request.POST.get("date")
         if not date:
                 date = str( datetime.now().date())
@@ -531,15 +521,14 @@ def input_loans(request):
             messages.error(request, "Loan amount cannot be negative")
             return redirect("input_loans")
         try:
-            member = Member.objects.filter(user_id=request.user, status=MemberStatus.ACTIVE).get(kycdetails__first_name=one[0], kycdetails__last_name=one[1])
+            member = Member.objects.filter(user_id=request.user, status=MemberStatus.ACTIVE).get(kycdetails__name=name)
         except Member.DoesNotExist:
             messages.error(request, "Member not found")
             return redirect("input_loans")
         except Member.MultipleObjectsReturned:
             messages.info(request, "Multiple members have that name, select which of them!")
-            members = Member.objects.filter(user_id=request.user, kycdetails__first_name=one[0], kycdetails__last_name=one[1]).annotate(
-                first_name=F("kycdetails__first_name"),
-                last_name=F("kycdetails__last_name"),
+            members = Member.objects.filter(user_id=request.user, kycdetails__name=name).annotate(
+                name=F("kycdetails__name"),
                 balance=ExpressionWrapper(Coalesce(Sum("contribution__amount", distinct=True), 0), DecimalField()),
                 loan_debt=ExpressionWrapper(Coalesce(Sum("approvedloan__amount_left", distinct=True), 0), DecimalField()),
             )
@@ -655,8 +644,7 @@ def contributions_to_excel(request):
     Returns:
         HttpResponse: Downloadable excel sheet
     """
-    members = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"),
-                                                                    last_name=F("kycdetails__last_name"),
+    members = Member.objects.filter(user_id=request.user).annotate(name=F("kycdetails__name"),
                                                                     total_contribution=Coalesce(Sum("contribution__amount", distinct=True), 0, output_field=DecimalField()),
                                                                     loan_debt=Coalesce(Sum("approvedloan__amount_left", distinct=True), 0, output_field=DecimalField()),
                                                                     email=F("kycdetails__email"),
@@ -664,28 +652,26 @@ def contributions_to_excel(request):
                                                                     ) 
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.cell(row=1, column=1).value = "First Name"
-    ws.cell(row=1, column=2).value = "Last Name"
-    ws.cell(row=1, column=3).value = "Phone Number"
-    ws.cell(row=1, column=4).value = "Total Contribution"
-    ws.cell(row=1, column=5).value = "Loan Debt"
-    ws.cell(row=1, column=6).value = "Email"
-    ws.cell(row=1, column=7).value = "Date of Birth"
-    ws.cell(row=1, column=8).value = "Status"
+    ws.cell(row=1, column=1).value = "Name"
+    ws.cell(row=1, column=2).value = "Phone Number"
+    ws.cell(row=1, column=3).value = "Total Contribution"
+    ws.cell(row=1, column=4).value = "Loan Debt"
+    ws.cell(row=1, column=5).value = "Email"
+    ws.cell(row=1, column=6).value = "Date of Birth"
+    ws.cell(row=1, column=7).value = "Status"
     
     for i in range(1, 9):
         ws.cell(row=1, column=i).font = Font(b=True)
         ws.column_dimensions[get_column_letter(i)].width += 5
 
     for i, member in enumerate(members, 2):
-        ws.cell(row=i, column=1).value = member.first_name
-        ws.cell(row=i, column=2).value = member.last_name
-        ws.cell(row=i, column=3).value = member.msisdn
-        ws.cell(row=i, column=4).value = member.total_contribution
-        ws.cell(row=i, column=5).value = member.loan_debt
-        ws.cell(row=i, column=6).value = member.email
-        ws.cell(row=i, column=7).value = member.dob
-        ws.cell(row=i, column=8).value = member.status
+        ws.cell(row=i, column=1).value = member.name
+        ws.cell(row=i, column=2).value = member.msisdn
+        ws.cell(row=i, column=3).value = member.total_contribution
+        ws.cell(row=i, column=4).value = member.loan_debt
+        ws.cell(row=i, column=5).value = member.email
+        ws.cell(row=i, column=6).value = member.dob
+        ws.cell(row=i, column=7).value = member.status
         
         
     response = HttpResponse(
@@ -709,8 +695,7 @@ def requests_to_excel(request):
     Returns:
         HttpResponse: Downloadable excel sheet
     """
-    members = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"), 
-                                      last_name=F("kycdetails__last_name"), 
+    members = Member.objects.filter(user_id=request.user).annotate(name=F("kycdetails__name"), 
                                       amount_requested=F("loanrequest__amount_requested"), 
                                       loan_status=F("loanrequest__status"), 
                                       date=F("loanrequest__request_date"), 
@@ -718,22 +703,20 @@ def requests_to_excel(request):
                                       loan_created=F("loanrequest__created")).filter(amount_requested__gt=0)
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.cell(row=1, column=1).value = "First Name"
-    ws.cell(row=1, column=2).value = "Last Name"
-    ws.cell(row=1, column=3).value = "Amount Requested"
-    ws.cell(row=1, column=4).value = "Loan Status"
-    ws.cell(row=1, column=5).value = "Date"
+    ws.cell(row=1, column=1).value = "Name"
+    ws.cell(row=1, column=2).value = "Amount Requested"
+    ws.cell(row=1, column=3).value = "Loan Status"
+    ws.cell(row=1, column=4).value = "Date"
 
     for i in range(1, 6):
         ws.cell(row=1, column=i).font = Font(b=True)
         ws.column_dimensions[get_column_letter(i)].width += 5
 
     for i, member in enumerate(members, 2):
-        ws.cell(row=i, column=1).value = member.first_name
-        ws.cell(row=i, column=2).value = member.last_name
-        ws.cell(row=i, column=3).value = member.amount_requested
-        ws.cell(row=i, column=4).value = member.loan_status
-        ws.cell(row=i, column=5).value = member.date
+        ws.cell(row=i, column=1).value = member.name
+        ws.cell(row=i, column=2).value = member.amount_requested
+        ws.cell(row=i, column=3).value = member.loan_status
+        ws.cell(row=i, column=4).value = member.date
    
         
         
@@ -757,33 +740,30 @@ def loans_to_excel(request):
     Returns:
         HttpResponse: Downloadable excel sheet
     """
-    members = ApprovedLoan.objects.annotate(first_name=F("member_msisdn__kycdetails__first_name"), 
-                                      last_name=F("member_msisdn__kycdetails__last_name"), 
+    members = ApprovedLoan.objects.annotate(name=F("member_msisdn__kycdetails__name"), 
                                       total_amount=F("amount_of_loan") + F("interest"),
                                       loan_id=F("loan_request_id"),
                                       ).filter(amount_of_loan__gt=0).filter(user_id=request.user)
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.cell(row=1, column=1).value = "First Name"
-    ws.cell(row=1, column=2).value = "Last Name"
-    ws.cell(row=1, column=3).value = "Amount of Loan"
-    ws.cell(row=1, column=4).value = "Interest"
-    ws.cell(row=1, column=5).value = "Total Amount"
-    ws.cell(row=1, column=6).value = "Amount Left"
-    ws.cell(row=1, column=7).value = "Status"
+    ws.cell(row=1, column=1).value = "Name"
+    ws.cell(row=1, column=2).value = "Amount of Loan"
+    ws.cell(row=1, column=3).value = "Interest"
+    ws.cell(row=1, column=4).value = "Total Amount"
+    ws.cell(row=1, column=5).value = "Amount Left"
+    ws.cell(row=1, column=6).value = "Status"
     
     for i in range(1, 8):
         ws.cell(row=1, column=i).font = Font(b=True)
         ws.column_dimensions[get_column_letter(i)].width += 5
 
     for i, member in enumerate(members, 2):
-        ws.cell(row=i, column=1).value = member.first_name
-        ws.cell(row=i, column=2).value = member.last_name
-        ws.cell(row=i, column=3).value = member.amount_of_loan
-        ws.cell(row=i, column=4).value = member.interest
-        ws.cell(row=i, column=5).value = member.total_amount
-        ws.cell(row=i, column=6).value = member.amount_left
-        ws.cell(row=i, column=7).value = member.status        
+        ws.cell(row=i, column=1).value = member.name
+        ws.cell(row=i, column=2).value = member.amount_of_loan
+        ws.cell(row=i, column=3).value = member.interest
+        ws.cell(row=i, column=4).value = member.total_amount
+        ws.cell(row=i, column=5).value = member.amount_left
+        ws.cell(row=i, column=6).value = member.status        
         
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -804,32 +784,29 @@ def history_to_excel(request):
     Returns:
         HttpResponse: Downloadable excel sheet
     """
-    members = Member.objects.filter(user_id=request.user).annotate(first_name=F("kycdetails__first_name"), 
-                                      last_name=F("kycdetails__last_name"), 
+    members = Member.objects.filter(user_id=request.user).annotate(name=F("kycdetails__name"), 
                                       transaction_type=F("transaction__transaction_type"),  
                                       description=F("transaction__description"), 
                                       amount=F("transaction__amount"),
                                       date = F("transaction__date")).filter(amount__gt=0)
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.cell(row=1, column=1).value = "First Name"
-    ws.cell(row=1, column=2).value = "Last Name"
-    ws.cell(row=1, column=3).value = "Transaction Type"
-    ws.cell(row=1, column=5).value = "Description"
+    ws.cell(row=1, column=1).value = "Name"
+    ws.cell(row=1, column=2).value = "Transaction Type"
+    ws.cell(row=1, column=3).value = "Description"
     ws.cell(row=1, column=4).value = "Amount"
-    ws.cell(row=1, column=6).value = "Date"
+    ws.cell(row=1, column=5).value = "Date"
     
     for i in range(1, 7):
         ws.cell(row=1, column=i).font = Font(b=True)
         ws.column_dimensions[get_column_letter(i)].width += 5
 
     for i, member in enumerate(members, 2):
-        ws.cell(row=i, column=1).value = member.first_name
-        ws.cell(row=i, column=2).value = member.last_name
-        ws.cell(row=i, column=3).value = member.transaction_type
-        ws.cell(row=i, column=5).value = member.description
+        ws.cell(row=i, column=1).value = member.name
+        ws.cell(row=i, column=2).value = member.transaction_type
+        ws.cell(row=i, column=3).value = member.description
         ws.cell(row=i, column=4).value = member.amount
-        ws.cell(row=i, column=6).value = member.date
+        ws.cell(row=i, column=5).value = member.date
 
         
     response = HttpResponse(
@@ -841,3 +818,15 @@ def history_to_excel(request):
     wb.save(response)
     
     return response
+
+
+def integrate(request):
+    info = KYCDetails.objects.all()
+    for member in info:
+        first_name = member.surname
+        last_name = member.other_names
+        full_name = f"{first_name} {last_name}"
+        member.name = full_name
+        member.save()
+
+    return HttpResponse("<h1>Done</h1>")

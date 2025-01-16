@@ -37,8 +37,9 @@ class Member(models.Model):
 
 class KYCDetails(models.Model):
     member_msisdn = models.ForeignKey(Member, on_delete=models.CASCADE)
-    first_name = models.CharField(max_length=50)
-    last_name = models.CharField(max_length=50)
+    surname = models.CharField(max_length=50)
+    other_names = models.CharField(max_length=50)
+    name = models.CharField(max_length=100)
     email = models.EmailField(unique=True, null=True, blank=True)
     dob = models.DateField(null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True)

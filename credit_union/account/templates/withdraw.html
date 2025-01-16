@@ -3,11 +3,11 @@
 <body>
     {% block content %}
     <p>Carefully read this before proceeding!</p>
-    <p>By clicking the button below, you are confirming that you want to withdraw money from the credit union account for {{ member.first_name }} {{ member.last_name }}.</p>
-    <p>All outstanding loans will be paid off from {{ member.first_name }} {{ member.last_name }}'s total balance left.</p>
-    <p>Any remaining balance will be withdrawn and handed over to {{ member.first_name }} {{ member.last_name }}.</p>
-    <p>This will set {{ member.first_name }} {{ member.last_name }}'s account to inactive.</p>
-    <p>Once the account is inactive, {{ member.first_name }} {{ member.last_name }} will no longer be able to make contributions or take loans.</p>
+    <p>By clicking the button below, you are confirming that you want to withdraw money from the credit union account for {{ member.name }}.</p>
+    <p>All outstanding loans will be paid off from {{ member.name }}'s total balance left.</p>
+    <p>Any remaining balance will be withdrawn and handed over to {{ member.name }}.</p>
+    <p>This will set {{ member.name }}'s account to inactive.</p>
+    <p>Once the account is inactive, {{ member.name }} will no longer be able to make contributions or take loans.</p>
     <p>The account cannot be made active again.</p>
     </br>
     </br>
@@ -17,10 +17,10 @@
         <section class="make-contribution">
             <form action="{% url 'withdraw' member.msisdn %}" method="POST">
                 {% csrf_token %} 
-                <p>{{ member.first_name }} {{ member.last_name }}'s balance is: {{ member.balance }}</p>
-                <p>{{ member.first_name }} {{ member.last_name }}'s total interest is: {{ member.interest }}</p>
-                <p>{{ member.first_name }} {{ member.last_name }}'s loan debt is: {{ member.loan_debt }}</p>
-                <p>{{ member.first_name }} {{ member.last_name }}'s final balance is: {{ member.final_balance }}</p>
+                <p>{{ member.name }}'s balance is: {{ member.balance }}</p>
+                <p>{{ member.name }}'s total interest is: {{ member.interest }}</p>
+                <p>{{ member.name }}'s loan debt is: {{ member.loan_debt }}</p>
+                <p>{{ member.name }}'s final balance is: {{ member.final_balance }}</p>
                 <div class="form-group">
                     <label for="date">Date:</label></br>
                     <input type="date" name="date" min="1900-01-01">
